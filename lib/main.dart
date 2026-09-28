@@ -268,7 +268,7 @@ class MarketRatesScreen extends StatelessWidget {
           const SizedBox(height: 8),
           _buildRateCard('২২ ক্যারেট সোনা', '৳ ২,৩০,৭৭২', '৳ ১৯,৭৮৫ / গ্রাম'),
           _buildRateCard('২১ ক্যারেট সোনা', '৳ ২,২০,৩৯১', '৳ ১৮,৮৯৫ / গ্রাম'),
-          _buildRateCard('১৮ ক্যারেট সোনা', '৳ ১,৮৯,২৪৮', '৳ ১৬,২২৫ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট সোনা', '৳ ১,১৮,২৪৮', '৳ ১৬,২২৫ / গ্রাম'),
           _buildRateCard('সনাতন পদ্ধতি', '৳ ১,৫৪,২৫৬', '৳ ১৩,২২৫ / গ্রাম'),
           const Divider(height: 25, color: Colors.grey),
           const Text('আজকের রূপার দর (প্রতি ভরি):', style: TextStyle(fontSize: 16, color: Colors.cyan, fontWeight: FontWeight.bold)),
@@ -316,7 +316,7 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
 
     double totalVori = vori + (ana / 16) + (roti / 96);
     double price = (totalVori * rate) + (totalVori * m);
-    setState(() => _total = price + (price * 0.05)); // ৫% ভ্যাটসহ
+    setState(() => _total = price + (price * 0.05));
   }
 
   @override
@@ -659,7 +659,6 @@ class _MortgageCalculatorScreenState extends State<MortgageCalculatorScreen> {
   }
 }
 
-// হেল্পার উইজেট
 Widget _buildInput(TextEditingController controller, String label) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
