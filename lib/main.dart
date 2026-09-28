@@ -12,54 +12,207 @@ class PoromaJewellersApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Poroma Jewellers',
-      theme: ThemeData(
-        primarySwatch: Colors.amber,
-        primaryColor: Colors.amber[800],
-        useMaterial3: true,
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        primaryColor: const Color(0xFFFFD700),
+        cardColor: const Color(0xFF1E1E1E),
       ),
-      home: const MainNavigationScreen(),
+      home: const DashboardScreen(),
     );
   }
 }
 
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1A1A1A),
+        centerTitle: true,
+        elevation: 3,
+        toolbarHeight: 70,
+        title: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Text(
+              'পরমা জুয়েলার্স',
+              style: TextStyle(
+                color: Color(0xFFFFD700), // হলুদ কালি
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Made by Pk',
+              style: TextStyle(
+                color: Colors.red, // লাল কালি
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // ৯টি প্রধান ফিচার গ্রিড
+            GridView.count(
+              crossAxisCount: 3,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: [
+                _buildGridItem(Icons.trending_up, '১. বাজারের আপডেট\n(বিশ্ব ও দেশীয়)', Colors.teal, () => _openScreen(context, const MarketTrendScreen())),
+                _buildGridItem(Icons.workspace_premium, '২. পাকার বাজার', Colors.amber.shade700, () => _openScreen(context, const RawGoldScreen())),
+                _buildGridItem(Icons.currency_lira, '৩. আজকের বাজার\n(সোনা ও রূপা)', Colors.amber, () => _openScreen(context, const MarketRatesScreen())),
+                _buildGridItem(Icons.calculate, '৪. স্বর্ণের মূল্য\nক্যালকুলেটর', Colors.green, () => _openScreen(context, const GoldCalculatorScreen())),
+                _buildGridItem(Icons.add_circle_outline, '৫. ওজন যোগ-বিয়োগ', Colors.lightGreen, () => _openScreen(context, const JewelryAddSubScreen())),
+                _buildGridItem(Icons.cleaning_services, '৬. পাকা পরতা\nক্যালকুলেটর', Colors.purple, () => _openScreen(context, const FineGoldCalculatorScreen())),
+                _buildGridItem(Icons.import_export, '৭. ক্যারেট কনভার্টার', Colors.redAccent, () => _openScreen(context, const KaratConverterScreen())),
+                _buildGridItem(Icons.swap_horiz, '৮. ভরি ও পয়েন্ট\nকনভার্টার', Colors.cyan, () => _openScreen(context, const UnitConverterScreen())),
+                _buildGridItem(Icons.account_balance, '৯. বন্ধকি হিসাব', Colors.orange, () => _openScreen(context, const MortgageCalculatorScreen())),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-  final List<Widget> _screens = [
-    const GoldCalculatorScreen(),
-    const FineGoldCalculatorScreen(),
-    const UnitConverterScreen(),
-    const AgeInterestCalculatorScreen(),
-    const JewelryAdditionSubtractionScreen(),
-  ];
+  Widget _buildGridItem(IconData icon, String title, Color borderColor, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1.5),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 10.5, color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openScreen(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
+  }
+}
+
+// ---------------------------------------------------------
+// ১. বাজারের আপডেট (বিশ্ব ও দেশীয়)
+// ---------------------------------------------------------
+class MarketTrendScreen extends StatelessWidget {
+  const MarketTrendScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: Colors.amber[900],
-        unselectedItemColor: Colors.grey[600],
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.calculate), label: 'ক্যালকুলেটর'),
-          BottomNavigationBarItem(icon: Icon(Icons.workspace_premium), label: 'পাকা সোনা'),
-          BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'কনভার্টার'),
-          BottomNavigationBarItem(icon: Icon(Icons.access_time), label: 'বয়স ও সুদ'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: 'যোগ-বিয়োগ'),
+      appBar: AppBar(title: const Text('বাজারের আপডেট (বিশ্ব ও দেশীয়)'), backgroundColor: const Color(0xFF1A1A1A)),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Card(
+              color: Colors.green.shade900.withOpacity(0.4),
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.trending_up, color: Colors.greenAccent, size: 36),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('দেশীয় বাজার: ঊর্ধ্বমুখী 📈', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.greenAccent)),
+                          SizedBox(height: 4),
+                          Text('Goldr.org ও বাজুস সোর্স অনুযায়ী স্থানীয় বাজারে সোনার চাহিদা ও মূল্য ঊর্ধ্বমুখী।', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              color: Colors.blueGrey.shade900,
+              child: const Padding(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(Icons.public, color: Colors.lightBlueAccent, size: 36),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('বিশ্ব বাজার: স্থিতিশীল 🌐', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent)),
+                          SizedBox(height: 4),
+                          Text('আন্তর্জাতিক বাজারে গোল্ড স্পট দর স্থিতিশীল অবস্থায় ট্রেড করছে।', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                        ],
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// ২. পাকার বাজার (Raw Gold Rates)
+// ---------------------------------------------------------
+class RawGoldScreen extends StatelessWidget {
+  const RawGoldScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('পাকার বাজার (Raw Gold)'), backgroundColor: const Color(0xFF1A1A1A)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Text('পাকা সোনার মূল্য (Pure Gold Rates):', style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          ListTile(
+            tileColor: Color(0xFF252525),
+            title: Text('২৪ ক্যারেট পাকা সোনা (প্রতি ভরি)', style: TextStyle(color: Colors.white)),
+            trailing: Text('৳ ২,৫১,৬৮৬', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15)),
+          ),
+          SizedBox(height: 8),
+          ListTile(
+            tileColor: Color(0xFF252525),
+            title: Text('২২ ক্যারেট পাকা সোনা (প্রতি ভরি)', style: TextStyle(color: Colors.white)),
+            trailing: Text('৳ ২,৩০,৭৭২', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15)),
+          ),
         ],
       ),
     );
@@ -67,7 +220,49 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 }
 
 // ---------------------------------------------------------
-// ১. সোনার দাম, মজুরি ও ভ্যাট ক্যালকুলেটর (Gold Rate & Calculator)
+// ৩. আজকের বাজার (সোনা এবং রূপা - ২২, ২১, ১৮ ক্যারেট)
+// ---------------------------------------------------------
+class MarketRatesScreen extends StatelessWidget {
+  const MarketRatesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('আজকের সোনা ও রূপার দর'), backgroundColor: const Color(0xFF1A1A1A)),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text('আজকের সোনার দর (প্রতি ভরি):', style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildRateCard('২২ ক্যারেট সোনা', '৳ ২,৩০,৭৭২', '৳ ১৯,৭৮৫ / গ্রাম'),
+          _buildRateCard('২১ ক্যারেট সোনা', '৳ ২,২০,৩৯১', '৳ ১৮,৮৯৫ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট সোনা', '৳ ১,৮৯,২৪৮', '৳ ১৬,২২৫ / গ্রাম'),
+          _buildRateCard('সনাতন পদ্ধতি', '৳ ১,৫৪,২৫৬', '৳ ১৩,২২৫ / গ্রাম'),
+          const Divider(height: 25, color: Colors.grey),
+          const Text('আজকের রূপার দর (প্রতি ভরি):', style: TextStyle(fontSize: 16, color: Colors.cyan, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildRateCard('২২ ক্যারেট রূপা', '৳ ৪,৪৯১', '৳ ৩৮৫ / গ্রাম'),
+          _buildRateCard('২১ ক্যারেট রূপা', '৳ ৪,৩১৬', '৳ ৩৭০ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট রূপা', '৳ ৩,৭৩২', '৳ ৩২০ / গ্রাম'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRateCard(String title, String voriRate, String gramRate) {
+    return Card(
+      color: const Color(0xFF252525),
+      child: ListTile(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        subtitle: Text('গ্রাম: $gramRate', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        trailing: Text(voriRate, style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 14)),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// ৪. স্বর্ণের মূল্য ক্যালকুলেটর
 // ---------------------------------------------------------
 class GoldCalculatorScreen extends StatefulWidget {
   const GoldCalculatorScreen({super.key});
@@ -77,153 +272,49 @@ class GoldCalculatorScreen extends StatefulWidget {
 }
 
 class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
-  String _selectedKarat = '২২K';
-  final _vori = TextEditingController();
-  final _ana = TextEditingController();
-  final _rati = TextEditingController();
-  final _point = TextEditingController();
-  final _rate = TextEditingController();
-  final _makingCharge = TextEditingController();
-  final _vatPercent = TextEditingController(text: '5'); // ডিফল্ট ৫% ভ্যাট
+  final _v = TextEditingController(), _a = TextEditingController(), _r = TextEditingController(), _rate = TextEditingController(text: '230772'), _making = TextEditingController(text: '3500');
+  double _total = 0;
 
-  bool _isMakingPercent = false;
-  double _total = 0.0;
+  void _calc() {
+    double vori = double.tryParse(_v.text) ?? 0;
+    double ana = double.tryParse(_a.text) ?? 0;
+    double roti = double.tryParse(_r.text) ?? 0;
+    double rate = double.tryParse(_rate.text) ?? 0;
+    double m = double.tryParse(_making.text) ?? 0;
 
-  void _calculate() {
-    double v = double.tryParse(_vori.text) ?? 0;
-    double a = double.tryParse(_ana.text) ?? 0;
-    double r = double.tryParse(_rati.text) ?? 0;
-    double p = double.tryParse(_point.text) ?? 0;
-    double ratePerVori = double.tryParse(_rate.text) ?? 0;
-    double mc = double.tryParse(_makingCharge.text) ?? 0;
-    double vat = double.tryParse(_vatPercent.text) ?? 0;
-
-    double totalVori = v + (a / 16.0) + (r / 96.0) + (p / 960.0);
-    double rawGoldPrice = totalVori * ratePerVori;
-
-    double totalMaking = _isMakingPercent ? (rawGoldPrice * mc / 100) : mc;
-    double subTotal = rawGoldPrice + totalMaking;
-    double totalVat = subTotal * (vat / 100);
-
-    setState(() {
-      _total = subTotal + totalVat;
-    });
+    double totalVori = vori + (ana / 16) + (roti / 96);
+    double price = (totalVori * rate) + (totalVori * m);
+    setState(() => _total = price + (price * 0.05)); // ৫% ভ্যাটসহ
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('পরমা জুয়েলার্স - দাম ও মজুরি'), backgroundColor: Colors.amber[700]),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              value: _selectedKarat,
-              items: ['২৪K', '২২K', '২১K', '১৮K'].map((k) => DropdownMenuItem(value: k, child: Text('ক্যারেট: $k'))).toList(),
-              onChanged: (v) => setState(() => _selectedKarat = v!),
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildInput(_vori, 'ভরি')),
-                Expanded(child: _buildInput(_ana, 'আনা')),
-                Expanded(child: _buildInput(_rati, 'রতি')),
-                Expanded(child: _buildInput(_point, 'পয়েন্ট')),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildInput(_rate, 'প্রতি ভরি সোনার দাম (টাকা)'),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(child: _buildInput(_makingCharge, 'মজুরি')),
-                Switch(value: _isMakingPercent, onChanged: (v) => setState(() => _isMakingPercent = v)),
-                Text(_isMakingPercent ? '%' : 'টাকা'),
-              ],
-            ),
-            const SizedBox(height: 10),
-            _buildInput(_vatPercent, 'ভ্যাট (%)'),
-            const SizedBox(height: 15),
-            ElevatedButton(
-              onPressed: _calculate,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700], minimumSize: const Size.fromHeight(45)),
-              child: const Text('মোট হিসাব করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 15),
-            _buildResultCard('সর্বমোট মূল্য: ৳ ${_total.toStringAsFixed(2)}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------
-// ২. পাকা সোনা (Fine Gold) ক্যালকুলেটর
-// ---------------------------------------------------------
-class FineGoldCalculatorScreen extends StatefulWidget {
-  const FineGoldCalculatorScreen({super.key});
-
-  @override
-  State<FineGoldCalculatorScreen> createState() => _FineGoldCalculatorScreenState();
-}
-
-class _FineGoldCalculatorScreenState extends State<FineGoldCalculatorScreen> {
-  String _karat = '২২K';
-  final _vori = TextEditingController();
-  final _rate = TextEditingController();
-
-  double _netGoldVori = 0.0;
-  double _finalPrice = 0.0;
-
-  void _calculateFineGold() {
-    double v = double.tryParse(_vori.text) ?? 0;
-    double r = double.tryParse(_rate.text) ?? 0;
-
-    double purePercentage = 100.0;
-    if (_karat == '২২K') purePercentage = 91.0; // ৯% খাদ
-    if (_karat == '২১K') purePercentage = 87.0; // ১৩% খাদ
-    if (_karat == '১৮K') purePercentage = 74.0; // ২৬% খাদ
-
-    double netVori = v * (purePercentage / 100.0);
-    setState(() {
-      _netGoldVori = netVori;
-      _finalPrice = netVori * r;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('পাকা সোনা (Fine Gold) হিসাব'), backgroundColor: Colors.amber[700]),
+      appBar: AppBar(title: const Text('স্বর্ণের মূল্য ক্যালকুলেটর')),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            DropdownButtonFormField<String>(
-              value: _karat,
-              items: ['২২K (৯% খাদ)', '২১K (১৩% খাদ)', '১৮K (২৬% খাদ)'].map((e) {
-                String k = e.split(' ')[0];
-                return DropdownMenuItem(value: k, child: Text(e));
-              }).toList(),
-              onChanged: (v) => setState(() => _karat = v!),
-              decoration: const InputDecoration(border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 10),
-            _buildInput(_vori, 'সোনার ওজন (ভরি)'),
-            const SizedBox(height: 10),
-            _buildInput(_rate, 'পাকা সোনার রেট (প্রতি ভরি)'),
-            const SizedBox(height: 15),
-            ElevatedButton(
-              onPressed: _calculateFineGold,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700], minimumSize: const Size.fromHeight(45)),
-              child: const Text('পাকা সোনার হিসাব করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 15),
-            _buildResultCard('নিট সোনা: ${_netGoldVori.toStringAsFixed(3)} ভরি\nমোট দাম: ৳ ${_finalPrice.toStringAsFixed(2)}'),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              Row(children: [
+                Expanded(child: _buildInput(_v, 'ভরি')),
+                Expanded(child: _buildInput(_a, 'আনা')),
+                Expanded(child: _buildInput(_r, 'রতি/পয়েন্ট')),
+              ]),
+              const SizedBox(height: 10),
+              _buildInput(_rate, 'প্রতি ভরি দাম (৳)'),
+              const SizedBox(height: 10),
+              _buildInput(_making, 'মেকিং চার্জ (প্রতি ভরি)'),
+              const SizedBox(height: 15),
+              ElevatedButton(
+                onPressed: _calc,
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+                child: const Text('হিসাব করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 15),
+              _buildResultCard('সর্বমোট মূল্য (৫% ভ্যাটসহ):\n৳ ${_total.toStringAsFixed(2)}'),
+            ],
+          ),
         ),
       ),
     );
@@ -231,183 +322,21 @@ class _FineGoldCalculatorScreenState extends State<FineGoldCalculatorScreen> {
 }
 
 // ---------------------------------------------------------
-// ৩. ইউনিট কনভার্টার (Unit Converter)
+// ৫. ওজন যোগ-বিয়োগ
 // ---------------------------------------------------------
-class UnitConverterScreen extends StatefulWidget {
-  const UnitConverterScreen({super.key});
+class JewelryAddSubScreen extends StatefulWidget {
+  const JewelryAddSubScreen({super.key});
 
   @override
-  State<UnitConverterScreen> createState() => _UnitConverterScreenState();
+  State<JewelryAddSubScreen> createState() => _JewelryAddSubScreenState();
 }
 
-class _UnitConverterScreenState extends State<UnitConverterScreen> {
-  final _totalPoints = TextEditingController();
-  final _gram = TextEditingController();
-
-  String _traditionalResult = '';
-  String _gramResult = '';
-
-  void _convertFromPoints() {
-    double p = double.tryParse(_totalPoints.text) ?? 0;
-    int vori = (p / 960).floor();
-    p %= 960;
-    int ana = (p / 60).floor();
-    p %= 60;
-    int rati = (p / 10).floor();
-    double point = p % 10;
-
-    double totalGram = ((vori * 960 + ana * 60 + rati * 10 + point) / 960) * 11.664;
-
-    setState(() {
-      _traditionalResult = '$vori ভরি, $ana আনা, $rati রতি, ${point.toStringAsFixed(1)} পয়েন্ট';
-      _gramResult = '${totalGram.toStringAsFixed(3)} গ্রাম';
-    });
-  }
-
-  void _convertFromGram() {
-    double g = double.tryParse(_gram.text) ?? 0;
-    double totalVori = g / 11.664;
-    double totalP = totalVori * 960;
-
-    int vori = (totalP / 960).floor();
-    totalP %= 960;
-    int ana = (totalP / 60).floor();
-    totalP %= 60;
-    int rati = (totalP / 10).floor();
-    double point = totalP % 10;
-
-    setState(() {
-      _traditionalResult = '$vori ভরি, $ana আনা, $rati রতি, ${point.toStringAsFixed(1)} পয়েন্ট';
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('ইউনিট কনভার্টার'), backgroundColor: Colors.amber[700]),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _buildInput(_totalPoints, 'মোট পয়েন্ট ইনপুট দিন'),
-            ElevatedButton(onPressed: _convertFromPoints, child: const Text('পয়েন্ট থেকে রূপান্তর')),
-            const Divider(height: 30),
-            _buildInput(_gram, 'গ্রাম (Gram) ইনপুট দিন'),
-            ElevatedButton(onPressed: _convertFromGram, child: const Text('গ্রাম থেকে রূপান্তর')),
-            const SizedBox(height: 20),
-            _buildResultCard('প্যারামাউন্ট রেজাল্ট:\n$_traditionalResult\n$_gramResult'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------
-// ৪. বয়স ও প্রোপোরশনাল সুদ ক্যালকুলেটর (Rule of 1-15 & 16-31 Days)
-// ---------------------------------------------------------
-class AgeInterestCalculatorScreen extends StatefulWidget {
-  const AgeInterestCalculatorScreen({super.key});
-
-  @override
-  State<AgeInterestCalculatorScreen> createState() => _AgeInterestCalculatorScreenState();
-}
-
-class _AgeInterestCalculatorScreenState extends State<AgeInterestCalculatorScreen> {
-  DateTime _startDate = DateTime.now().subtract(const Duration(days: 40));
-  DateTime _endDate = DateTime.now();
-
-  final _principal = TextEditingController();
-  final _monthlyRate = TextEditingController(text: '2');
-
-  String _ageResult = '';
-  double _totalInterest = 0;
-
-  void _calculateAgeAndInterest() {
-    int days = _endDate.difference(_startDate).inDays;
-    int months = days ~/ 30;
-    int remainingDays = days % 30;
-
-    double p = double.tryParse(_principal.text) ?? 0;
-    double r = double.tryParse(_monthlyRate.text) ?? 0;
-
-    // প্রোপোরশনাল সুদের নিয়ম:
-    // ১-১৫ দিন = ০.৫ মাস (হাফ মান্থ)
-    // ১৬-৩১ দিন = ১.০ মাস (ফুল মান্থ)
-    double dayFactor = 0.0;
-    if (remainingDays >= 1 && remainingDays <= 15) {
-      dayFactor = 0.5;
-    } else if (remainingDays >= 16) {
-      dayFactor = 1.0;
-    }
-
-    double totalEffectiveMonths = months + dayFactor;
-    double interest = p * (r / 100) * totalEffectiveMonths;
-
-    setState(() {
-      _ageResult = '$months মাস $remainingDays দিন (কার্যকর মাস: $totalEffectiveMonths)';
-      _totalInterest = interest;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('বয়স ও সুদ ক্যালকুলেটর'), backgroundColor: Colors.amber[700]),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ListTile(
-              title: Text('শুরুর তারিখ: ${_startDate.toString().split(' ')[0]}'),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                DateTime? picked = await showDatePicker(context: context, initialDate: _startDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
-                if (picked != null) setState(() => _startDate = picked);
-              },
-            ),
-            ListTile(
-              title: Text('শেষের তারিখ: ${_endDate.toString().split(' ')[0]}'),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                DateTime? picked = await showDatePicker(context: context, initialDate: _endDate, firstDate: DateTime(2000), lastDate: DateTime(2100));
-                if (picked != null) setState(() => _endDate = picked);
-              },
-            ),
-            _buildInput(_principal, 'মূল ধন / টাকা'),
-            const SizedBox(height: 10),
-            _buildInput(_monthlyRate, 'মাসিক সুদের হার (%)'),
-            const SizedBox(height: 15),
-            ElevatedButton(
-              onPressed: _calculateAgeAndInterest,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber[700]),
-              child: const Text('হিসাব করুন', style: TextStyle(color: Colors.black)),
-            ),
-            const SizedBox(height: 15),
-            _buildResultCard('সময়কাল: $_ageResult\nমোট সুদ: ৳ ${_totalInterest.toStringAsFixed(2)}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ---------------------------------------------------------
-// ৫. ২ গহনার যোগ-বিয়োগ (Jewelry Addition & Subtraction)
-// ---------------------------------------------------------
-class JewelryAdditionSubtractionScreen extends StatefulWidget {
-  const JewelryAdditionSubtractionScreen({super.key});
-
-  @override
-  State<JewelryAdditionSubtractionScreen> createState() => _JewelryAdditionSubtractionScreenState();
-}
-
-class _JewelryAdditionSubtractionScreenState extends State<JewelryAdditionSubtractionScreen> {
+class _JewelryAddSubScreenState extends State<JewelryAddSubScreen> {
   final _v1 = TextEditingController(), _a1 = TextEditingController(), _r1 = TextEditingController(), _p1 = TextEditingController();
   final _v2 = TextEditingController(), _a2 = TextEditingController(), _r2 = TextEditingController(), _p2 = TextEditingController();
 
-  String _addResult = '';
-  String _subResult = '';
+  String _addResult = '০ ভরি, ০ আনা, ০ রতি, ০ পয়েন্ট';
+  String _subResult = '০ ভরি, ০ আনা, ০ রতি, ০ পয়েন্ট';
 
   double _toPoints(TextEditingController v, TextEditingController a, TextEditingController r, TextEditingController p) {
     double vori = double.tryParse(v.text) ?? 0;
@@ -417,19 +346,15 @@ class _JewelryAdditionSubtractionScreenState extends State<JewelryAdditionSubtra
     return (vori * 960) + (ana * 60) + (rati * 10) + point;
   }
 
-  String _pointsToTraditional(double totalPoints) {
-    bool isNegative = totalPoints < 0;
-    totalPoints = totalPoints.abs();
-
-    int vori = (totalPoints / 960).floor();
-    totalPoints %= 960;
-    int ana = (totalPoints / 60).floor();
-    totalPoints %= 60;
-    int rati = (totalPoints / 10).floor();
-    double point = totalPoints % 10;
-
-    String prefix = isNegative ? '-' : '';
-    return '$prefix$vori ভরি, $ana আনা, $rati রতি, ${point.toStringAsFixed(1)} পয়েন্ট';
+  String _pointsToTraditional(double pts) {
+    if (pts < 0) pts = 0;
+    int vori = (pts / 960).floor();
+    pts %= 960;
+    int ana = (pts / 60).floor();
+    pts %= 60;
+    int rati = (pts / 10).floor();
+    double point = pts % 10;
+    return '$vori ভরি, $ana আনা, $rati রতি, ${point.toStringAsFixed(1)} পয়েন্ট';
   }
 
   void _calculate() {
@@ -445,18 +370,22 @@ class _JewelryAdditionSubtractionScreenState extends State<JewelryAdditionSubtra
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('দুই গহনার যোগ-বিয়োগ'), backgroundColor: Colors.amber[700]),
+      appBar: AppBar(title: const Text('ওজন যোগ-বিয়োগ')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Text('গহনা ১:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('প্রথম ওজন:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
             Row(children: [Expanded(child: _buildInput(_v1, 'ভরি')), Expanded(child: _buildInput(_a1, 'আনা')), Expanded(child: _buildInput(_r1, 'রতি')), Expanded(child: _buildInput(_p1, 'পয়েন্ট'))]),
             const SizedBox(height: 10),
-            const Text('গহনা ২:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text('দ্বিতীয় ওজন:', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber)),
             Row(children: [Expanded(child: _buildInput(_v2, 'ভরি')), Expanded(child: _buildInput(_a2, 'আনা')), Expanded(child: _buildInput(_r2, 'রতি')), Expanded(child: _buildInput(_p2, 'পয়েন্ট'))]),
             const SizedBox(height: 15),
-            ElevatedButton(onPressed: _calculate, child: const Text('যোগ ও বিয়োগফল বের করুন')),
+            ElevatedButton(
+              onPressed: _calculate,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+              child: const Text('হিসাব করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
             const SizedBox(height: 15),
             _buildResultCard('যোগফল: $_addResult\nবিয়োগফল: $_subResult'),
           ],
@@ -466,25 +395,264 @@ class _JewelryAdditionSubtractionScreenState extends State<JewelryAdditionSubtra
   }
 }
 
-// কমন উইজেট
+// ---------------------------------------------------------
+// ৬. পাকা পরতা ক্যালকুলেটর
+// ---------------------------------------------------------
+class FineGoldCalculatorScreen extends StatefulWidget {
+  const FineGoldCalculatorScreen({super.key});
+
+  @override
+  State<FineGoldCalculatorScreen> createState() => _FineGoldCalculatorScreenState();
+}
+
+class _FineGoldCalculatorScreenState extends State<FineGoldCalculatorScreen> {
+  final _weight = TextEditingController();
+  final _purity = TextEditingController(text: '91.6');
+  double _fineGold = 0;
+
+  void _calc() {
+    double w = double.tryParse(_weight.text) ?? 0;
+    double p = double.tryParse(_purity.text) ?? 0;
+    setState(() => _fineGold = (w * p) / 100);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('পাকা পরতা ক্যালকুলেটর')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildInput(_weight, 'পুরাতন সোনার ওজন (গ্রাম)'),
+            const SizedBox(height: 10),
+            _buildInput(_purity, 'খাদ/বিশুদ্ধতা পার্সেন্টেজ (%)'),
+            const SizedBox(height: 15),
+            ElevatedButton(
+              onPressed: _calc,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+              child: const Text('পাকা সোনা বের করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 15),
+            _buildResultCard('বিশুদ্ধ পাকা সোনা: ${_fineGold.toStringAsFixed(3)} গ্রাম'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// ৭. ক্যারেট কনভার্টার
+// ---------------------------------------------------------
+class KaratConverterScreen extends StatefulWidget {
+  const KaratConverterScreen({super.key});
+
+  @override
+  State<KaratConverterScreen> createState() => _KaratConverterScreenState();
+}
+
+class _KaratConverterScreenState extends State<KaratConverterScreen> {
+  final _weight = TextEditingController(text: '10');
+  double _fromK = 22;
+  double _toK = 24;
+  double _result = 0;
+
+  void _calc() {
+    double w = double.tryParse(_weight.text) ?? 0;
+    setState(() => _result = (w * _fromK) / _toK);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('ক্যারেট কনভার্টার')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildInput(_weight, 'ওজন (গ্রাম)'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<double>(
+                    value: _fromK,
+                    items: const [
+                      DropdownMenuItem(value: 22, child: Text('22K')),
+                      DropdownMenuItem(value: 21, child: Text('21K')),
+                      DropdownMenuItem(value: 18, child: Text('18K')),
+                    ],
+                    onChanged: (v) => setState(() => _fromK = v!),
+                    decoration: const InputDecoration(labelText: 'থেকে', border: OutlineInputBorder()),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButtonFormField<double>(
+                    value: _toK,
+                    items: const [
+                      DropdownMenuItem(value: 24, child: Text('24K (Pure)')),
+                      DropdownMenuItem(value: 22, child: Text('22K')),
+                      DropdownMenuItem(value: 21, child: Text('21K')),
+                    ],
+                    onChanged: (v) => setState(() => _toK = v!),
+                    decoration: const InputDecoration(labelText: 'তে', border: OutlineInputBorder()),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            ElevatedButton(
+              onPressed: _calc,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+              child: const Text('কনভার্ট করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 15),
+            _buildResultCard('সমপরিমাণ ওজন: ${_result.toStringAsFixed(3)} গ্রাম'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// ৮. ভরি ও পয়েন্ট কনভার্টার
+// ---------------------------------------------------------
+class UnitConverterScreen extends StatefulWidget {
+  const UnitConverterScreen({super.key});
+
+  @override
+  State<UnitConverterScreen> createState() => _UnitConverterScreenState();
+}
+
+class _UnitConverterScreenState extends State<UnitConverterScreen> {
+  final _gram = TextEditingController();
+  String _res = 'ভরি: ০ | আনা: ০ | রতি: ০ | পয়েন্ট: ০';
+
+  void _convert() {
+    double g = double.tryParse(_gram.text) ?? 0;
+    double totalVori = g / 11.664;
+    int vori = totalVori.floor();
+    double remAna = (totalVori - vori) * 16;
+    int ana = remAna.floor();
+    double remRoti = (remAna - ana) * 6;
+    int roti = remRoti.floor();
+    double point = (remRoti - roti) * 10;
+
+    setState(() {
+      _res = 'ভরি: $vori | আনা: $ana | রতি: $roti | পয়েন্ট: ${point.toStringAsFixed(1)}';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('ভরি ও পয়েন্ট কনভার্টার')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildInput(_gram, 'গ্রাম (Gram) ইনপুট দিন'),
+            const SizedBox(height: 15),
+            ElevatedButton(
+              onPressed: _convert,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+              child: const Text('রূপান্তর করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 15),
+            _buildResultCard(_res),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------
+// ৯. বন্ধকি হিসাব
+// ---------------------------------------------------------
+class MortgageCalculatorScreen extends StatefulWidget {
+  const MortgageCalculatorScreen({super.key});
+
+  @override
+  State<MortgageCalculatorScreen> createState() => _MortgageCalculatorScreenState();
+}
+
+class _MortgageCalculatorScreenState extends State<MortgageCalculatorScreen> {
+  final _amount = TextEditingController();
+  final _rate = TextEditingController(text: '2');
+  final _months = TextEditingController(text: '1');
+  double _interest = 0;
+  double _total = 0;
+
+  void _calc() {
+    double p = double.tryParse(_amount.text) ?? 0;
+    double r = double.tryParse(_rate.text) ?? 0;
+    double m = double.tryParse(_months.text) ?? 0;
+
+    double interest = (p * r * m) / 100;
+    setState(() {
+      _interest = interest;
+      _total = p + interest;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('বন্ধকি হিসাব')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            _buildInput(_amount, 'ঋণ / বন্ধকি টাকা (৳)'),
+            const SizedBox(height: 10),
+            _buildInput(_rate, 'মাসিক সুদের হার (%)'),
+            const SizedBox(height: 10),
+            _buildInput(_months, 'সময়কাল (মাস)'),
+            const SizedBox(height: 15),
+            ElevatedButton(
+              onPressed: _calc,
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.amber, minimumSize: const Size.fromHeight(45)),
+              child: const Text('হিসাব করুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            ),
+            const SizedBox(height: 15),
+            _buildResultCard('মোট সুদ: ৳ ${_interest.toStringAsFixed(2)}\nসর্বমোট পরিশোধযোগ্য: ৳ ${_total.toStringAsFixed(2)}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// হেল্পার উইজেট
 Widget _buildInput(TextEditingController controller, String label) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
     child: TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      decoration: InputDecoration(labelText: label, border: const OutlineInputBorder(), contentPadding: const EdgeInsets.all(8)),
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+        enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.grey)),
+        focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.amber)),
+        contentPadding: const EdgeInsets.all(10),
+      ),
     ),
   );
 }
 
 Widget _buildResultCard(String text) {
   return Card(
-    color: Colors.amber[50],
+    color: const Color(0xFF2C2C2C),
     elevation: 3,
     child: Padding(
       padding: const EdgeInsets.all(16),
-      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.amber)),
     ),
   );
 }
