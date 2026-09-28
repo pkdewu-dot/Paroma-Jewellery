@@ -196,22 +196,54 @@ class RawGoldScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('পাকার বাজার (Raw Gold)'), backgroundColor: const Color(0xFF1A1A1A)),
+      appBar: AppBar(
+        title: const Text('পাকার বাজার (Raw Gold)'), 
+        backgroundColor: const Color(0xFF1A1A1A)
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: const [
-          Text('পাকা সোনার মূল্য (Pure Gold Rates):', style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          ListTile(
-            tileColor: Color(0xFF252525),
-            title: Text('২৪ ক্যারেট পাকা সোনা (প্রতি ভরি)', style: TextStyle(color: Colors.white)),
-            trailing: Text('৳ ২,৫১,৬৮৬', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15)),
+        children: [
+          const Text(
+            'পাকা সোনার বিস্তারিত মূল্য:', 
+            style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
           ),
-          SizedBox(height: 8),
-          ListTile(
-            tileColor: Color(0xFF252525),
-            title: Text('২২ ক্যারেট পাকা সোনা (প্রতি ভরি)', style: TextStyle(color: Colors.white)),
-            trailing: Text('৳ ২,৩০,৭৭২', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 15)),
+          const SizedBox(height: 12),
+          
+          // ১. প্রতি ভরি (১১.৬৬৪ গ্রাম)
+          _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ২,৫১,৬৮৬'),
+          const SizedBox(height: 10),
+          
+          // ২. পাকা আইডিয়া
+          _buildPakaCard('পাকা আইডিয়া', '৳ ২,৪৮,৫০০'),
+          const SizedBox(height: 10),
+          
+          // ৩. ভ্যাট এবং শুল্ক ছাড়া
+          _buildPakaCard('ভ্যাট এবং শুল্ক ছাড়া', '৳ ২,৩৯,৭০০'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPakaCard(String title, String price) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252525),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade800),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title, 
+              style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.w600)
+            ),
+          ),
+          Text(
+            price, 
+            style: const TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
           ),
         ],
       ),
