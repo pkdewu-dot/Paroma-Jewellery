@@ -15,15 +15,6 @@ jobs:
         with:
           flutter-version: '3.19.x'
 
-      - name: Recreate Flutter Project Structure
-        run: |
-          mkdir temp_app
-          cd temp_app
-          flutter create poroma_jewellers --org com.pk.poromajewellers
-          cp -r poroma_jewellers/* ../
-          cd ..
-          rm -rf temp_app
-
       - name: Install dependencies
         run: flutter pub get
 
@@ -35,4 +26,3 @@ jobs:
         with:
           name: PoromaJewellers-APK
           path: build/app/outputs/flutter-apk/app-release.apk
-
