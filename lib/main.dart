@@ -45,7 +45,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'পরমা জুয়েলার্স',
               style: TextStyle(
-                color: Color(0xFFFFD700), // হলুদ কালি
+                color: Color(0xFFFFD700),
                 fontWeight: FontWeight.bold,
                 fontSize: 22,
               ),
@@ -54,7 +54,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'Made by Pk',
               style: TextStyle(
-                color: Colors.red, // লাল কালি
+                color: Colors.red,
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
               ),
@@ -66,7 +66,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            // ৯টি প্রধান ফিচার গ্রিড
             GridView.count(
               crossAxisCount: 3,
               crossAxisSpacing: 8,
@@ -122,9 +121,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ১. বাজারের আপডেট (বিশ্ব ও দেশীয়)
-// ---------------------------------------------------------
 class MarketTrendScreen extends StatelessWidget {
   const MarketTrendScreen({super.key});
 
@@ -188,9 +184,6 @@ class MarketTrendScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------
-// ২. পাকার বাজার (Raw Gold Rates) - Live WebView Integration
-// ---------------------------------------------------------
 class RawGoldScreen extends StatefulWidget {
   const RawGoldScreen({super.key});
 
@@ -210,9 +203,11 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageFinished: (String url) {
-            setState(() {
-              _isLoading = false;
-            });
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
+            }
           },
         ),
       )
@@ -250,9 +245,6 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৩. আজকের বাজার (সোনা এবং রূপা - ২২, ২১, ১৮ ক্যারেট)
-// ---------------------------------------------------------
 class MarketRatesScreen extends StatelessWidget {
   const MarketRatesScreen({super.key});
 
@@ -292,9 +284,6 @@ class MarketRatesScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------
-// ৪. স্বর্ণের মূল্য ক্যালকুলেটর
-// ---------------------------------------------------------
 class GoldCalculatorScreen extends StatefulWidget {
   const GoldCalculatorScreen({super.key});
 
@@ -352,9 +341,6 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৫. ওজন যোগ-বিয়োগ
-// ---------------------------------------------------------
 class JewelryAddSubScreen extends StatefulWidget {
   const JewelryAddSubScreen({super.key});
 
@@ -426,9 +412,6 @@ class _JewelryAddSubScreenState extends State<JewelryAddSubScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৬. পাকা পরতা ক্যালকুলেটর
-// ---------------------------------------------------------
 class FineGoldCalculatorScreen extends StatefulWidget {
   const FineGoldCalculatorScreen({super.key});
 
@@ -473,9 +456,6 @@ class _FineGoldCalculatorScreenState extends State<FineGoldCalculatorScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৭. ক্যারেট কনভার্টার
-// ---------------------------------------------------------
 class KaratConverterScreen extends StatefulWidget {
   const KaratConverterScreen({super.key});
 
@@ -548,9 +528,6 @@ class _KaratConverterScreenState extends State<KaratConverterScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৮. ভরি ও পয়েন্ট কনভার্টার
-// ---------------------------------------------------------
 class UnitConverterScreen extends StatefulWidget {
   const UnitConverterScreen({super.key});
 
@@ -601,9 +578,6 @@ class _UnitConverterScreenState extends State<UnitConverterScreen> {
   }
 }
 
-// ---------------------------------------------------------
-// ৯. বন্ধকি হিসাব
-// ---------------------------------------------------------
 class MortgageCalculatorScreen extends StatefulWidget {
   const MortgageCalculatorScreen({super.key});
 
