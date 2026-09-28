@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   runApp(const PoromaJewellersApp());
@@ -188,63 +189,61 @@ class MarketTrendScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// ২. পাকার বাজার (Raw Gold Rates) - Goldr.org অনুযায়ী
+// ২. পাকার বাজার (Raw Gold Rates) - Live WebView Integration
 // ---------------------------------------------------------
-class RawGoldScreen extends StatelessWidget {
+class RawGoldScreen extends StatefulWidget {
   const RawGoldScreen({super.key});
+
+  @override
+  State<RawGoldScreen> createState() => _RawGoldScreenState();
+}
+
+class _RawGoldScreenState extends State<RawGoldScreen> {
+  late final WebViewController _controller;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (String url) {
+            setState(() {
+              _isLoading = false;
+            });
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse('https://www.goldr.org/24-karat-gold-price-bangladesh/'));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('পাকার বাজার (Raw Gold)'), 
-        backgroundColor: const Color(0xFF1A1A1A)
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            '২৪ ক্যারেট স্বর্ণের দাম (GoldR.org):', 
-            style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
+        title: const Text('পাকার বাজার (লাইভ)'), 
+        backgroundColor: const Color(0xFF1A1A1A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.amber),
+            onPressed: () {
+              setState(() {
+                _isLoading = true;
+              });
+              _controller.reload();
+            },
           ),
-          const SizedBox(height: 12),
-          
-          // ১. প্রতি ভরি (১১.৬৬৪ গ্রাম)
-          _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ২,০৪,৭২০.৭৯'),
-          const SizedBox(height: 12),
-          
-          // ২. পাকা আইডিয়া
-          _buildPakaCard('পাকা আইডিয়া', '৳ ১,৯৯,৪৭০.৭৯'),
-          const SizedBox(height: 12),
-          
-          // ৩. VAT ও শুল্ক ছাড়া
-          _buildPakaCard('VAT ও শুল্ক ছাড়া', '৳ ১,৮৯,৯৭০.২১'),
         ],
       ),
-    );
-  }
-
-  Widget _buildPakaCard(String title, String price) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade800),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      body: Stack(
         children: [
-          Text(
-            title, 
-            style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)
-          ),
-          const SizedBox(height: 8),
-          Text(
-            price, 
-            style: const TextStyle(fontSize: 24, color: Colors.amber, fontWeight: FontWeight.bold)
-          ),
+          WebViewWidget(controller: _controller),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(color: Colors.amber),
+            ),
         ],
       ),
     );
