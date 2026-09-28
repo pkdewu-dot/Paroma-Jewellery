@@ -15,8 +15,24 @@ jobs:
         with:
           flutter-version: '3.19.x'
 
+      - name: Rebuild Project Structure Safely
+        run: |
+          mkdir temp_app
+          cd temp_app
+          flutter create poroma_jewellers --org com.pk.poromajewellers
+          cp -r poroma_jewellers/* ../
+          cd ..
+          rm -rf temp_app
+
+      - name: Restore Custom Main Code
+        run: |
+          git checkout HEAD -- lib/main.dart
+
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Build APK
-        run: flutter build apk --release --main=lib/main.dart
+        run: flutter build apk --release
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
