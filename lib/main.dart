@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 void main() {
   runApp(const PoromaJewellersApp());
@@ -190,104 +188,39 @@ class MarketTrendScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// ২. পাকার বাজার (Raw Gold Rates) - লাইভ এপিআই ডাটা
+// ২. পাকার বাজার (Raw Gold Rates) - Goldr.org অনুযায়ী
 // ---------------------------------------------------------
-class RawGoldScreen extends StatefulWidget {
+class RawGoldScreen extends StatelessWidget {
   const RawGoldScreen({super.key});
-
-  @override
-  State<RawGoldScreen> createState() => _RawGoldScreenState();
-}
-
-class _RawGoldScreenState extends State<RawGoldScreen> {
-  bool _isLoading = true;
-  double _voriPrice = 204720.79;
-  double _pakaIdea = 199470.79;
-  double _noVatPrice = 189970.21;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLiveRates();
-  }
-
-  Future<void> _fetchLiveRates() async {
-    setState(() => _isLoading = true);
-    try {
-      // স্পট গোল্ড রেট এপিআই
-      final response = await http.get(Uri.parse('https://api.gold-api.com/price/XAU'));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        double goldOunceUSD = (data['price'] as num).toDouble();
-        
-        // ১ আউন্স = ২.৬৮৬৪ ভরি, USD/BDT রেট ~ ১২০
-        double usdToBdt = 121.5;
-        double gramPriceBDT = (goldOunceUSD * usdToBdt) / 31.1034768;
-        
-        double liveVori = gramPriceBDT * 11.664;
-        
-        setState(() {
-          _voriPrice = liveVori;
-          _pakaIdea = liveVori * 0.9743; // স্পট গোল্ডের লাইভ হিসাব
-          _noVatPrice = liveVori * 0.9279;
-          _isLoading = false;
-        });
-      } else {
-        setState(() => _isLoading = false);
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('পাকার বাজার (Raw Gold)'), 
-        backgroundColor: const Color(0xFF1A1A1A),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.amber),
-            onPressed: _fetchLiveRates,
-            tooltip: 'রিফ্রেশ করুন',
-          )
+        backgroundColor: const Color(0xFF1A1A1A)
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const Text(
+            '২৪ ক্যারেট স্বর্ণের দাম (GoldR.org):', 
+            style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
+          ),
+          const SizedBox(height: 12),
+          
+          // ১. প্রতি ভরি (১১.৬৬৪ গ্রাম)
+          _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ২,০৪,৭২০.৭৯'),
+          const SizedBox(height: 12),
+          
+          // ২. পাকা আইডিয়া
+          _buildPakaCard('পাকা আইডিয়া', '৳ ১,৯৯,৪৭০.৭৯'),
+          const SizedBox(height: 12),
+          
+          // ৩. VAT ও শুল্ক ছাড়া
+          _buildPakaCard('VAT ও শুল্ক ছাড়া', '৳ ১,৮৯,৯৭০.২১'),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Colors.amber))
-        : ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    '২৪ ক্যারেট লাইভ স্বর্ণের দাম:', 
-                    style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: _fetchLiveRates,
-                    icon: const Icon(Icons.sync, size: 16, color: Colors.amber),
-                    label: const Text('রিফ্রেশ করুন', style: TextStyle(color: Colors.amber, fontSize: 12)),
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.amber)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              // ১. প্রতি ভরি (১১.৬৬৪ গ্রাম)
-              _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ${_voriPrice.toStringAsFixed(2)}'),
-              const SizedBox(height: 12),
-              
-              // ২. পাকা আইডিয়া
-              _buildPakaCard('পাকা আইডিয়া', '৳ ${_pakaIdea.toStringAsFixed(2)}'),
-              const SizedBox(height: 12),
-              
-              // ৩. VAT ও শুল্ক ছাড়া
-              _buildPakaCard('VAT ও শুল্ক ছাড়া', '৳ ${_noVatPrice.toStringAsFixed(2)}'),
-            ],
-          ),
     );
   }
 
@@ -303,22 +236,9 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title, 
-                style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade900.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(4)
-                ),
-                child: const Text('LIVE', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
-              ),
-            ],
+          Text(
+            title, 
+            style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)
           ),
           const SizedBox(height: 8),
           Text(
