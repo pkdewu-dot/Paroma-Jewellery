@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 void main() {
   runApp(const PoromaJewellersApp());
@@ -187,18 +186,11 @@ class MarketTrendScreen extends StatelessWidget {
 class RawGoldScreen extends StatelessWidget {
   const RawGoldScreen({super.key});
 
-  Future<void> _launchURL() async {
-    final Uri url = Uri.parse('https://www.goldr.org/24-karat-gold-price-bangladesh/');
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not launch $url');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('পাকার বাজার (লাইভ)'),
+        title: const Text('পাকার বাজার'),
         backgroundColor: const Color(0xFF1A1A1A),
       ),
       body: Center(
@@ -206,29 +198,19 @@ class RawGoldScreen extends StatelessWidget {
           padding: const EdgeInsets.all(24.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.workspace_premium, size: 80, color: Colors.amber),
-              const SizedBox(height: 20),
-              const Text(
-                'লাইভ ২৪ ক্যারেট পাকার বাজার',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.amber),
+            children: const [
+              Icon(Icons.workspace_premium, size: 80, color: Colors.amber),
+              SizedBox(height: 20),
+              Text(
+                '২৪ ক্যারেট পাকা সোনা',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.amber),
               ),
-              const SizedBox(height: 10),
-              const Text(
-                'goldr.org থেকে সরাসরি সোনার লাইভ আপডেট দেখুন',
+              SizedBox(height: 10),
+              Text(
+                'আজকের আন্তর্জাতিক ও স্থানীয় পাকার দর আপডেট পেতে "আজকের বাজার" সেকশনটি দেখুন।',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.white70, fontSize: 14),
               ),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                onPressed: _launchURL,
-                icon: const Icon(Icons.open_in_browser, color: Colors.black),
-                label: const Text('লাইভ রেট দেখুন', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              )
             ],
           ),
         ),
