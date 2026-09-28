@@ -188,7 +188,7 @@ class MarketTrendScreen extends StatelessWidget {
 }
 
 // ---------------------------------------------------------
-// ২. পাকার বাজার (Raw Gold Rates)
+// ২. পাকার বাজার (Raw Gold Rates) - Goldr.org অনুযায়ী
 // ---------------------------------------------------------
 class RawGoldScreen extends StatelessWidget {
   const RawGoldScreen({super.key});
@@ -204,21 +204,21 @@ class RawGoldScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const Text(
-            'পাকা সোনার বিস্তারিত মূল্য:', 
+            '২৪ ক্যারেট স্বর্ণের দাম (GoldR.org):', 
             style: TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
           ),
           const SizedBox(height: 12),
           
           // ১. প্রতি ভরি (১১.৬৬৪ গ্রাম)
-          _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ২,৫১,৬৮৬'),
+          _buildPakaCard('প্রতি ভরি (১১.৬৬৪ গ্রাম)', '৳ ২,০৪,৭২০.৭৯'),
           const SizedBox(height: 10),
           
           // ২. পাকা আইডিয়া
-          _buildPakaCard('পাকা আইডিয়া', '৳ ২,৪৮,৫০০'),
+          _buildPakaCard('পাকা আইডিয়া', '৳ ১,৯৯,৪৭০.৭৯'),
           const SizedBox(height: 10),
           
-          // ৩. ভ্যাট এবং শুল্ক ছাড়া
-          _buildPakaCard('ভ্যাট এবং শুল্ক ছাড়া', '৳ ২,৩৯,৭০০'),
+          // ৩. VAT ও শুল্ক ছাড়া
+          _buildPakaCard('VAT ও শুল্ক ছাড়া', '৳ ১,৮৯,৯৭০.২১'),
         ],
       ),
     );
@@ -226,24 +226,23 @@ class RawGoldScreen extends StatelessWidget {
 
   Widget _buildPakaCard(String title, String price) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
         color: const Color(0xFF252525),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade800),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              title, 
-              style: const TextStyle(fontSize: 15, color: Colors.white, fontWeight: FontWeight.w600)
-            ),
+          Text(
+            title, 
+            style: const TextStyle(fontSize: 14, color: Colors.white70, fontWeight: FontWeight.w500)
           ),
+          const SizedBox(height: 6),
           Text(
             price, 
-            style: const TextStyle(fontSize: 16, color: Colors.amber, fontWeight: FontWeight.bold)
+            style: const TextStyle(fontSize: 22, color: Colors.amber, fontWeight: FontWeight.bold)
           ),
         ],
       ),
@@ -268,7 +267,7 @@ class MarketRatesScreen extends StatelessWidget {
           const SizedBox(height: 8),
           _buildRateCard('২২ ক্যারেট সোনা', '৳ ২,৩০,৭৭২', '৳ ১৯,৭৮৫ / গ্রাম'),
           _buildRateCard('২১ ক্যারেট সোনা', '৳ ২,২০,৩৯১', '৳ ১৮,৮৯৫ / গ্রাম'),
-          _buildRateCard('১৮ ক্যারেট সোনা', '৳ ১,১৮,২৪৮', '৳ ১৬,২২৫ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট সোনা', '৳ ১,৮৯,২৪৮', '৳ ১৬,২২৫ / গ্রাম'),
           _buildRateCard('সনাতন পদ্ধতি', '৳ ১,৫৪,২৫৬', '৳ ১৩,২২৫ / গ্রাম'),
           const Divider(height: 25, color: Colors.grey),
           const Text('আজকের রূপার দর (প্রতি ভরি):', style: TextStyle(fontSize: 16, color: Colors.cyan, fontWeight: FontWeight.bold)),
