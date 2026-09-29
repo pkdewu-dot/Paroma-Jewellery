@@ -1,5 +1,5 @@
 name: poroma_jewellers
-description: "A new Flutter project."
+description: "A new Flutter project for Poroma Jewellers."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
