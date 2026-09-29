@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(const PoromaJewellersApp());
@@ -183,40 +185,125 @@ class MarketTrendScreen extends StatelessWidget {
   }
 }
 
-class RawGoldScreen extends StatelessWidget {
+class RawGoldScreen extends StatefulWidget {
   const RawGoldScreen({super.key});
+
+  @override
+  State<RawGoldScreen> createState() => _RawGoldScreenState();
+}
+
+class _RawGoldScreenState extends State<RawGoldScreen> {
+  bool _isLoading = true;
+  String _goldPriceUSD = '';
+  String _lastUpdated = '';
+  String _errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchLiveGoldRate();
+  }
+
+  Future<void> _fetchLiveGoldRate() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse('https://api.gold-api.com/price/XAU'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _goldPriceUSD = data['price']?.toString() ?? 'N/A';
+          _lastUpdated = DateTime.now().toString().split('.')[0];
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = 'লাইভ দর লোড করা সম্ভব হয়নি।';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'ইন্টারনেট সংযোগ চেক করুন।';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('পাকার বাজার'),
+        title: const Text('পাকার বাজার (লাইভ)'),
         backgroundColor: const Color(0xFF1A1A1A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.amber),
+            onPressed: _fetchLiveGoldRate,
+          )
+        ],
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.workspace_premium, size: 80, color: Colors.amber),
-              SizedBox(height: 20),
-              Text(
-                '২৪ ক্যারেট পাকা সোনা',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.amber),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'আজকের আন্তর্জাতিক ও স্থানীয় পাকার দর আপডেট পেতে "আজকের বাজার" সেকশনটি দেখুন।',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 14),
-              ),
-            ],
-          ),
-        ),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.amber)
+            : _errorMessage.isNotEmpty
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.error_outline, size: 60, color: Colors.redAccent),
+                      const SizedBox(height: 12),
+                      Text(_errorMessage, style: const TextStyle(color: Colors.white70)),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _fetchLiveGoldRate,
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber),
+                        child: const Text('পুনরায় চেষ্টা করুন', style: TextStyle(color: Colors.black)),
+                      ),
+                    ],
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.workspace_premium, size: 80, color: Colors.amber),
+                        const SizedBox(height: 20),
+                        const Text(
+                          '২৪ ক্যারেট পাকা সোনা (আন্তর্জাতিক)',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.amber),
+                        ),
+                        const SizedBox(height: 15),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF222222),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.amber, width: 1.5),
+                          ),
+                          child: Text(
+                            '\$$goldPriceUSD / আউন্স',
+                            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        Text(
+                          'সর্বশেষ আপডেট: $_lastUpdated',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
+
+  String get goldPriceUSD => _goldPriceUSD;
 }
 
 class MarketRatesScreen extends StatelessWidget {
@@ -240,7 +327,7 @@ class MarketRatesScreen extends StatelessWidget {
           const SizedBox(height: 8),
           _buildRateCard('২২ ক্যারেট রূপা', '৳ ৪,৪৯১', '৳ ৩৮৫ / গ্রাম'),
           _buildRateCard('২১ ক্যারেট রূপা', '৳ ৪,৩১৬', '৳ ৩৭০ / গ্রাম'),
-          _buildRateCard('১৮ ক্যারেট রূপা', '৳ ৩,৭৩২', '৳ ৩২০ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট রূপা', '৳ ৩,ট৩২', '৳ ৩২০ / গ্রাম'),
         ],
       ),
     );
