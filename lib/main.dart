@@ -34,7 +34,7 @@ String toBanglaDigit(String input) {
   return input;
 }
 
-/// সংখ্যানুসারে বাংলাদেশি কমা (১,০০,০০০ / ১০,০০,০০০) ফরম্যাট করার ফাংশন
+/// সংখ্যানুসারে বাংলাদেশি কমা ফরম্যাট করার ফাংশন
 String formatNumberWithCommas(double number, {bool isCurrency = false}) {
   String numStr = isCurrency ? number.toStringAsFixed(2) : number.toStringAsFixed(1);
   List<String> parts = numStr.split('.');
@@ -260,11 +260,13 @@ class HomeScreen extends StatelessWidget {
                               icon: Icons.swap_horiz,
                               iconColor: Colors.deepOrange,
                             ),
+                            // ক্যারেট কনভার্টার (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'ক্যারেট কনভার্টার',
                               icon: Icons.tune,
                               iconColor: Colors.red,
+                              targetScreen: const CaratConverterScreen(),
                             ),
                             // ওজন যোগ-বিয়োগ (এক্টিভ অপশন)
                             _buildWhiteCard(
@@ -908,7 +910,7 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
   }
 }
 
-// ========== ৪. ওজন যোগ-বিয়োগ স্ক্রিন (নতুন সংযোজন) ==========
+// ========== ৪. ওজন যোগ-বিয়োগ স্ক্রিন ==========
 class WeightAddSubtractScreen extends StatefulWidget {
   const WeightAddSubtractScreen({super.key});
 
@@ -920,8 +922,8 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
   String _displayExpression = ""; 
   String _currentNumberInput = ""; 
   
-  List<double> _weightPointsList = []; 
-  List<String> _operatorsList = [];
+  final List<double> _weightPointsList = []; 
+  final List<String> _operatorsList = [];
 
   double _currentVori = 0;
   double _currentAna = 0;
@@ -1164,7 +1166,6 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
     );
   }
 
-  // অরেঞ্জ কালারের ভরি, আনা, রতি, পয়েন্ট বাটন তৈরির উইজেট
   Widget _buildUnitButton(String label) {
     return Expanded(
       child: Material(
@@ -1192,7 +1193,6 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
     );
   }
 
-  // ক্যালকুলেটর কিপ্যাড বাটন তৈরির উইজেট
   Widget _buildCalcButton(
     String label, {
     Color color = Colors.white,
@@ -1222,6 +1222,361 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========== ৫. ক্যারেট কনভার্টার স্ক্রিন (নতুন সংযুক্ত) ==========
+class CaratConverterScreen extends StatefulWidget {
+  const CaratConverterScreen({super.key});
+
+  @override
+  State<CaratConverterScreen> createState() => _CaratConverterScreenState();
+}
+
+class _CaratConverterScreenState extends State<CaratConverterScreen> {
+  // Option 1: "ক্যারেট থেকে খাঁটি ও খাদ বের করা"
+  // Option 2: "খাদ দিয়ে ক্যারেট তৈরি করা"
+  String selectedCalculationType = 'ক্যারেট থেকে খাঁটি ও খাদ বের করা';
+  int targetCarat = 22; // 22, 21, 18
+  int currentCarat = 18; // 18, 21, 22 (Used for Option 2)
+
+  // Input Controllers
+  final TextEditingController _voriController = TextEditingController();
+  final TextEditingController _anaController = TextEditingController();
+  final TextEditingController _rotiController = TextEditingController();
+  final TextEditingController _pointController = TextEditingController();
+
+  // Result variables
+  String? resultTotalWeight;
+  String? resultPureGold;
+  String? resultAlloy;
+  String? resultMessage;
+
+  // Convert Vori, Ana, Roti, Point to total Points
+  // 1 Vori = 16 Ana, 1 Ana = 6 Roti, 1 Roti = 10 Points
+  // 1 Vori = 16 * 6 * 10 = 960 Points
+  double _inputsToTotalPoints() {
+    double vori = double.tryParse(_voriController.text) ?? 0;
+    double ana = double.tryParse(_anaController.text) ?? 0;
+    double roti = double.tryParse(_rotiController.text) ?? 0;
+    double point = double.tryParse(_pointController.text) ?? 0;
+
+    return (vori * 960) + (ana * 60) + (roti * 10) + point;
+  }
+
+  // Convert total Points back to (Vori, Ana, Roti, Point) string format
+  String _pointsToTraditionalUnit(double totalPoints) {
+    if (totalPoints <= 0) return "০ ভরি ০ আনা ০ রতি ০ পয়েন্ট";
+
+    int pts = totalPoints.round();
+
+    int vori = pts ~/ 960;
+    int rem1 = pts % 960;
+
+    int ana = rem1 ~/ 60;
+    int rem2 = rem1 % 60;
+
+    int roti = rem2 ~/ 10;
+    double point = (rem2 % 10) + (totalPoints - totalPoints.floor());
+
+    String voriStr = toBanglaDigit(vori.toString());
+    String anaStr = toBanglaDigit(ana.toString());
+    String rotiStr = toBanglaDigit(roti.toString());
+    String pointStr = toBanglaDigit(point.toStringAsFixed(1).replaceAll('.0', ''));
+
+    return "$voriStr ভরি $anaStr আনা $rotiStr রতি $pointStr পয়েন্ট";
+  }
+
+  void _calculate() {
+    double inputPoints = _inputsToTotalPoints();
+
+    if (inputPoints <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে সঠিক ওজন ইনপুট দিন')),
+      );
+      return;
+    }
+
+    setState(() {
+      if (selectedCalculationType == 'ক্যারেট থেকে খাঁটি ও খাদ বের করা') {
+        // Pure Gold fraction = targetCarat / 24
+        double pureGoldPoints = inputPoints * (targetCarat / 24.0);
+        double alloyPoints = inputPoints - pureGoldPoints;
+
+        resultTotalWeight = _pointsToTraditionalUnit(inputPoints);
+        resultPureGold = _pointsToTraditionalUnit(pureGoldPoints);
+        resultAlloy = _pointsToTraditionalUnit(alloyPoints);
+        resultMessage = null;
+      } else {
+        // "খাদ দিয়ে ক্যারেট তৈরি করা"
+        if (targetCarat >= currentCarat) {
+          resultTotalWeight = null;
+          resultPureGold = null;
+          resultAlloy = null;
+          resultMessage = "টার্গেট ক্যারেট অবশ্যই বর্তমান ক্যারেট থেকে কম হতে হবে (যেমন: ২১ ক্যারেট তৈরি করতে আপনার কাছে ২২ ক্যারেটের সোনা থাকতে হবে)।";
+          return;
+        }
+
+        // Amount of Pure Gold in the input = inputPoints * (currentCarat / 24)
+        double pureGoldInInput = inputPoints * (currentCarat / 24.0);
+
+        // Required total weight for targetCarat = pureGoldInInput / (targetCarat / 24)
+        double requiredTotalPoints = pureGoldInInput / (targetCarat / 24.0);
+
+        // Additional Alloy needed = requiredTotalPoints - inputPoints
+        double alloyNeededPoints = requiredTotalPoints - inputPoints;
+
+        resultMessage = "আপনার কাছে ${toBanglaDigit(currentCarat.toString())} ক্যারেটের ${_pointsToTraditionalUnit(inputPoints)} সোনা আছে।";
+        resultAlloy = _pointsToTraditionalUnit(alloyNeededPoints);
+        resultTotalWeight = _pointsToTraditionalUnit(requiredTotalPoints);
+        resultPureGold = null;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ক্যারেট কনভার্টার', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Dropdown Options Box
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        // Option 1 & 2 Selector
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("অপশন সিলেক্ট করুন", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.amber),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    isExpanded: true,
+                                    value: selectedCalculationType,
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: 'ক্যারেট থেকে খাঁটি ও খাদ বের করা',
+                                        child: Text('ক্যারেট থেকে খাঁটি ও খাদ বের করা', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'খাদ দিয়ে ক্যারেট তৈরি করা',
+                                        child: Text('খাদ দিয়ে ক্যারেট তৈরি করা', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          selectedCalculationType = val;
+                                          resultTotalWeight = null;
+                                          resultMessage = null;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // Target Carat
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("টার্গেট ক্যারেট", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.amber),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int>(
+                                    isExpanded: true,
+                                    value: targetCarat,
+                                    items: const [
+                                      DropdownMenuItem(value: 22, child: Text('২২ ক্যারেট')),
+                                      DropdownMenuItem(value: 21, child: Text('২১ ক্যারেট')),
+                                      DropdownMenuItem(value: 18, child: Text('১৮ ক্যারেট')),
+                                    ],
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          targetCarat = val;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Additional Dropdown when Option 2 is selected
+                    if (selectedCalculationType == 'খাদ দিয়ে ক্যারেট তৈরি করা') ...[
+                      const SizedBox(height: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text("আপনার কাছে থাকা সোনার ক্যারেট", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.amber),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                isExpanded: true,
+                                value: currentCarat,
+                                items: const [
+                                  DropdownMenuItem(value: 22, child: Text('২২ ক্যারেট')),
+                                  DropdownMenuItem(value: 21, child: Text('২১ ক্যারেট')),
+                                  DropdownMenuItem(value: 18, child: Text('১৮ ক্যারেট')),
+                                ],
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      currentCarat = val;
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Input Fields: Vori, Ana, Roti, Point
+            const Text("ওজন ইনপুট দিন:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildInputField(_voriController, "ভরি"),
+                const SizedBox(width: 6),
+                _buildInputField(_anaController, "আনা"),
+                const SizedBox(width: 6),
+                _buildInputField(_rotiController, "রতি"),
+                const SizedBox(width: 6),
+                _buildInputField(_pointController, "পয়েন্ট"),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Yellow Bold Action Button
+            ElevatedButton(
+              onPressed: _calculate,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.amber[600],
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                "হিসাব করুন",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Result Display Area
+            if (resultMessage != null || resultTotalWeight != null)
+              Card(
+                color: Colors.amber[50],
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "ফলাফল:",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.brown),
+                      ),
+                      const Divider(),
+                      if (resultMessage != null) ...[
+                        Text(resultMessage!, style: TextStyle(fontSize: 15, color: resultTotalWeight == null ? Colors.red : Colors.black, fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                      ],
+                      if (selectedCalculationType == 'ক্যারেট থেকে খাঁটি ও খাদ বের করা' && resultTotalWeight != null) ...[
+                        Text("মোট ওজন: $resultTotalWeight", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 6),
+                        Text("খাঁটি সোনা থাকবে: $resultPureGold", style: const TextStyle(fontSize: 15, color: Colors.green, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Text("খাদ থাকবে: $resultAlloy", style: const TextStyle(fontSize: 15, color: Colors.red, fontWeight: FontWeight.bold)),
+                      ],
+                      if (selectedCalculationType == 'খাদ দিয়ে ক্যারেট তৈরি করা' && resultAlloy != null) ...[
+                        Text("খাদ দিতে হবে: $resultAlloy", style: const TextStyle(fontSize: 15, color: Colors.red, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 6),
+                        Text("মোট ওজন (সোনা + খাদ): $resultTotalWeight", style: const TextStyle(fontSize: 15, color: Colors.green, fontWeight: FontWeight.bold)),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField(TextEditingController controller, String label) {
+    return Expanded(
+      child: TextField(
+        controller: controller,
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textAlign: TextAlign.center,
+        decoration: InputDecoration(
+          labelText: label,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
       ),
