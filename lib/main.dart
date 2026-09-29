@@ -54,7 +54,6 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
   if (isCurrency) {
     return toBanglaDigit('$integerPart.$decimalPart');
   } else {
-    // যদি দশমিকের পরে ০ থাকে তাহলে সেটা বাদ রাখা বা দেখানো
     return decimalPart == '0' ? toBanglaDigit(integerPart) : toBanglaDigit('$integerPart.$decimalPart');
   }
 }
@@ -273,11 +272,13 @@ class HomeScreen extends StatelessWidget {
                               icon: Icons.add,
                               iconColor: Colors.green,
                             ),
+                            // হাত লস (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'হাত লস',
                               icon: Icons.back_hand_outlined,
                               iconColor: Colors.brown,
+                              targetScreen: const HatLossCalculatorScreen(),
                             ),
                             // বন্ধকী হিসাব (এক্টিভ অপশন)
                             _buildWhiteCard(
@@ -365,7 +366,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ========== ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ (বাংলা ডিজিট ও বাংলাদেশি কমা ফরম্যাট সহ) ==========
+// ========== ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ ==========
 class BondhokiCalculatorScreen extends StatefulWidget {
   const BondhokiCalculatorScreen({super.key});
 
@@ -418,7 +419,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
     }
   }
 
-  // ================= সুদের কাস্টম লজিক =================
   void _calculateInterest() {
     double asol = double.tryParse(_asolController.text) ?? 0.0;
     double monthlyRate = double.tryParse(_rateController.text) ?? 2.0;
@@ -460,7 +460,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
       int totalFullMonths = m + (y * 12);
       double effectiveMonths = totalFullMonths.toDouble();
 
-      // ১-১৫ দিন = ০.৫ মাস (হাফ সুদ), ১৬-৩১ দিন = ১ পূর্ণ মাস (ফুল সুদ)
       if (d >= 1 && d <= 15) {
         effectiveMonths += 0.5;
       } else if (d >= 16) {
@@ -663,6 +662,251 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+// ========== ৩. হাত লস ক্যালকুলেটর পেজ (নতুন সংযোজন) ==========
+class HatLossCalculatorScreen extends StatefulWidget {
+  const HatLossCalculatorScreen({super.key});
+
+  @override
+  State<HatLossCalculatorScreen> createState() => _HatLossCalculatorScreenState();
+}
+
+class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
+  // ১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি, ১ রতি = ১০ পয়েন্ট => ১ ভরি = ৯৬০ পয়েন্ট
+  // বাই ডিফল্ট: ১ আনা ২ রতি = (১*৬০ + ২*১০) = ৮০ পয়েন্ট
+  final TextEditingController _lossRateController = TextEditingController(text: "80");
+
+  final TextEditingController _voriController = TextEditingController();
+  final TextEditingController _anaController = TextEditingController();
+  final TextEditingController _rotiController = TextEditingController();
+  final TextEditingController _pointController = TextEditingController();
+
+  double _totalLossPoints = 0.0;
+  int _resultAna = 0;
+  int _resultRoti = 0;
+  double _resultPoint = 0.0;
+
+  void _calculateHatLoss() {
+    double lossRatePerVoriPoints = double.tryParse(_lossRateController.text) ?? 80.0;
+
+    double vori = double.tryParse(_voriController.text) ?? 0.0;
+    double ana = double.tryParse(_anaController.text) ?? 0.0;
+    double roti = double.tryParse(_rotiController.text) ?? 0.0;
+    double point = double.tryParse(_pointController.text) ?? 0.0;
+
+    // মোট গহনার ওজন পয়েন্টে রূপান্তর (১ ভরি = ৯৬০ পয়েন্ট, ১ আনা = ৬০ পয়েন্ট, ১ রতি = ১০ পয়েন্ট)
+    double totalJewelleryPoints = (vori * 960) + (ana * 60) + (roti * 10) + point;
+
+    if (totalJewelleryPoints > 0 && lossRatePerVoriPoints > 0) {
+      // ঐকিক নিয়ম: ৯৬০ পয়েন্টে (১ ভরি) লস হয় lossRatePerVoriPoints
+      // তাহলে totalJewelleryPoints-এ লস হবে (totalJewelleryPoints * lossRatePerVoriPoints) / 960
+      _totalLossPoints = (totalJewelleryPoints * lossRatePerVoriPoints) / 960.0;
+
+      // পয়েন্ট থেকে আনা, রতি ও অবশিষ্ট পয়েন্ট বের করা
+      int totalAna = (_totalLossPoints / 60).floor();
+      double remPointsAfterAna = _totalLossPoints % 60;
+
+      int rotiCount = (remPointsAfterAna / 10).floor();
+      double finalPoints = remPointsAfterAna % 10;
+
+      _resultAna = totalAna;
+      _resultRoti = rotiCount;
+      _resultPoint = finalPoints;
+    } else {
+      _totalLossPoints = 0.0;
+      _resultAna = 0;
+      _resultRoti = 0;
+      _resultPoint = 0.0;
+    }
+
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('হাত লস হিসাব', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        color: const Color(0xFFF5F5F5),
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ১. ভরি প্রতি লসের পরিমাণ নির্ধারণ
+              _buildCard(
+                title: "ভরি প্রতি লসের হার (পয়েন্টে)",
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _lossRateController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: toBanglaDigit('৮০'),
+                        suffixText: 'পয়েন্ট',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (val) => _calculateHatLoss(),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      toBanglaDigit('* বাই ডিফল্ট: ৮০ পয়েন্ট (১ আনা ২ রতি) সেট করা আছে'),
+                      style: const TextStyle(fontSize: 12, color: Colors.brown, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              // ২. গহনার ওজন নেওয়ার ইনপুটসমূহ
+              _buildCard(
+                title: "গহনার ওজন লিখুন",
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildWeightInputField(
+                            label: "ভরি",
+                            controller: _voriController,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildWeightInputField(
+                            label: "আনা",
+                            controller: _anaController,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildWeightInputField(
+                            label: "রতি",
+                            controller: _rotiController,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildWeightInputField(
+                            label: "পয়েন্ট",
+                            controller: _pointController,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
+
+              // ৩. মোট লস গণনার ফলাফল
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+                  border: Border.all(color: Colors.brown.shade200),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      "মোট হাত লস",
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown),
+                    ),
+                    const Divider(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildLossResultText("$_resultAna", "আনা"),
+                        const SizedBox(width: 12),
+                        _buildLossResultText("$_resultRoti", "রতি"),
+                        const SizedBox(width: 12),
+                        _buildLossResultText(_resultPoint.toStringAsFixed(1), "পয়েন্ট"),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.brown.shade50,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        toBanglaDigit("মোট লস: ${_totalLossPoints.toStringAsFixed(2)} পয়েন্ট"),
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLossResultText(String value, String unit) {
+    return Column(
+      children: [
+        Text(
+          toBanglaDigit(value),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.redAccent),
+        ),
+        Text(
+          unit,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightInputField({required String label, required TextEditingController controller}) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      onChanged: (val) => _calculateHatLoss(),
+    );
+  }
+
+  Widget _buildCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
           const SizedBox(height: 8),
           child,
         ],
