@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
 
 void main() {
   runApp(const PoromaJewellersApp());
@@ -211,12 +211,13 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse('https://api.gold-api.com/price/XAU'),
-      );
+      final client = HttpClient();
+      final request = await client.getUrl(Uri.parse('https://api.gold-api.com/price/XAU'));
+      final response = await request.close();
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final responseBody = await response.transform(utf8.decoder).join();
+        final data = json.decode(responseBody);
         setState(() {
           _goldPriceUSD = data['price']?.toString() ?? 'N/A';
           _lastUpdated = DateTime.now().toString().split('.')[0];
@@ -228,6 +229,7 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
           _isLoading = false;
         });
       }
+      client.close();
     } catch (e) {
       setState(() {
         _errorMessage = 'ইন্টারনেট সংযোগ চেক করুন।';
@@ -287,7 +289,7 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
                             border: Border.all(color: Colors.amber, width: 1.5),
                           ),
                           child: Text(
-                            '\$$goldPriceUSD / আউন্স',
+                            '\$$_goldPriceUSD / আউন্স',
                             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.greenAccent),
                           ),
                         ),
@@ -302,8 +304,6 @@ class _RawGoldScreenState extends State<RawGoldScreen> {
       ),
     );
   }
-
-  String get goldPriceUSD => _goldPriceUSD;
 }
 
 class MarketRatesScreen extends StatelessWidget {
@@ -327,7 +327,7 @@ class MarketRatesScreen extends StatelessWidget {
           const SizedBox(height: 8),
           _buildRateCard('২২ ক্যারেট রূপা', '৳ ৪,৪৯১', '৳ ৩৮৫ / গ্রাম'),
           _buildRateCard('২১ ক্যারেট রূপা', '৳ ৪,৩১৬', '৳ ৩৭০ / গ্রাম'),
-          _buildRateCard('১৮ ক্যারেট রূপা', '৳ ৩,ট৩২', '৳ ৩২০ / গ্রাম'),
+          _buildRateCard('১৮ ক্যারেট রূপা', '৳ ৩,৭৩২', '৳ ৩২০ / গ্রাম'),
         ],
       ),
     );
