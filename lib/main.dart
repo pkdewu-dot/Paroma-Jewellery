@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // ১. অ্যাপ বার
+              // ১. কাস্টম অ্যাপ বার
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 color: const Color(0xFFFF3B30),
@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const SizedBox(height: 8),
 
-                      // ২. ইমেজ স্লাইডার
+                      // ২. ইমেজ স্লাইডার (২ টি ছবি)
                       SizedBox(
                         height: 150,
                         child: PageView.builder(
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 10),
 
-                      // ৩. নোটিফিকেশন বার
+                      // ৩. নোটিফিকেশন মেসেজ বার
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 12),
 
-                      // ৪. ১১টি অপশনের গ্রিড (৩টি কলামে)
+                      // ৪. আপডেটকৃত অপশনসমূহের গ্রিড (১১ টি অপশন)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GridView.count(
@@ -208,6 +208,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: '২৪ ক্যারেট সোনার\nদাম',
                               icon: Icons.star_border,
                               iconColor: Colors.amber,
+                            ),
+                            _buildWhiteCard(
+                              title: 'আজকের বাজার',
+                              icon: Icons.storefront_outlined,
+                              iconColor: Colors.pink,
                             ),
                             _buildWhiteCard(
                               title: 'স্বর্ণের মূল্য\nক্যালকুলেটর',
@@ -225,8 +230,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               iconColor: Colors.teal,
                             ),
                             _buildWhiteCard(
-                              title: 'সনাতন ক্যারেট\nহিসাব',
-                              icon: Icons.grid_on,
+                              title: 'খাদ হিসাব',
+                              icon: Icons.pie_chart_outline,
                               iconColor: Colors.indigo,
                             ),
                             _buildWhiteCard(
@@ -253,11 +258,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: 'বন্ধকী হিসাব',
                               icon: Icons.account_balance_wallet_outlined,
                               iconColor: Colors.deepPurple,
-                            ),
-                            _buildWhiteCard(
-                              title: 'জুয়েলারি গহনা\nডিজাইন 🔥',
-                              icon: Icons.diamond_outlined,
-                              iconColor: Colors.pink,
                             ),
                           ],
                         ),
