@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -12,7 +11,7 @@ class JewelleryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Jewellery Calculator',
+      title: 'Made by Pk',
       theme: ThemeData(
         fontFamily: 'Roboto',
       ),
@@ -21,48 +20,8 @@ class JewelleryApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final PageController _pageController = PageController();
-  int _currentPage = 0;
-  Timer? _timer;
-
-  final List<String> _bannerImages = [
-    'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=800',
-    'https://images.unsplash.com/photo-1601121141461-9d6647bca1ed?w=800',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
-      if (_currentPage < _bannerImages.length - 1) {
-        _currentPage++;
-      } else {
-        _currentPage = 0;
-      }
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeInOut,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // ১. কাস্টম অ্যাপ বার
+              // ১. কাস্টম অ্যাপ বার (Jewellery Calculator এর জায়গায় Made by Pk)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 color: const Color(0xFFFF3B30),
@@ -89,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Jewellery Calculat...',
+                        'Made by Pk',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -124,39 +83,55 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
 
-                      // ২. ইমেজ স্লাইডার (২ টি ছবি)
-                      SizedBox(
-                        height: 150,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: _bannerImages.length,
-                          onPageChanged: (int index) {
-                            setState(() {
-                              _currentPage = index;
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            return Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 10),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                image: DecorationImage(
-                                  image: NetworkImage(_bannerImages[index]),
-                                  fit: BoxFit.cover,
-                                ),
+                      // ২. উপরের ফাঁকা অংশে দোকানের নাম ও ঠিকানা সংবলিত সুন্দর ব্যানার
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 15),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B0000), // গাঢ় মেরুন/লাল ব্যাকগ্রাউন্ড
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 6,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: const Column(
+                          children: [
+                            Text(
+                              'পরমা জুয়েলার্স',
+                              style: TextStyle(
+                                color: Color(0xFFFFD700), // সোনালী কালার
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
                               ),
-                            );
-                          },
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
                       // ৩. নোটিফিকেশন মেসেজ বার
                       Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.15),
@@ -193,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 12),
 
-                      // ৪. আপডেটকৃত অপশনসমূহের গ্রিড (১১ টি অপশন)
+                      // ৪. গ্রিড বাটনসমূহ (১১ টি অপশন)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GridView.count(
