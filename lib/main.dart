@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // ১. অ্যাপ বার[span_0](start_span)[span_0](end_span)
+              // ১. অ্যাপ বার
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 color: const Color(0xFFFF3B30),
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 10),
 
-                      // ৩. নোটিফিকেশন বার[span_1](start_span)[span_1](end_span)
+                      // ৩. নোটিফিকেশন বার
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 12),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 12),
 
-                      // ৪. প্রথম টেমপ্লেটের থিমে ১০টি অপশনের গ্রিড (৩টি কলামে)[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)
+                      // ৪. ১১টি অপশনের গ্রিড (৩টি কলামে)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GridView.count(
@@ -245,9 +245,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               iconColor: Colors.green,
                             ),
                             _buildWhiteCard(
+                              title: 'হাত লস',
+                              icon: Icons.back_hand_outlined,
+                              iconColor: Colors.brown,
+                            ),
+                            _buildWhiteCard(
                               title: 'বন্ধকী হিসাব',
                               icon: Icons.account_balance_wallet_outlined,
-                              iconColor: Colors.brown,
+                              iconColor: Colors.deepPurple,
                             ),
                             _buildWhiteCard(
                               title: 'জুয়েলারি গহনা\nডিজাইন 🔥',
