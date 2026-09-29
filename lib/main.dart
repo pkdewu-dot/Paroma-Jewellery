@@ -327,7 +327,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ================= ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ =================
+// ========== ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ (নতুন সুদের লজিক সহ) ==========
 class BondhokiCalculatorScreen extends StatefulWidget {
   const BondhokiCalculatorScreen({super.key});
 
@@ -344,6 +344,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
   double _totalInterest = 0.0;
   double _totalAmount = 0.0;
+  double _calculatedInterestRate = 0.0; // মোট কত পার্সেন্ট সুদ হলো
 
   int _years = 0;
   int _months = 0;
@@ -379,9 +380,10 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
     }
   }
 
+  // ================= আপনার নতুন সুদের কাস্টম লজিক =================
   void _calculateInterest() {
     double asol = double.tryParse(_asolController.text) ?? 0.0;
-    double rate = double.tryParse(_rateController.text) ?? 0.0;
+    double monthlyRate = double.tryParse(_rateController.text) ?? 2.0;
 
     if (asol > 0 && _takenDate != null) {
       DateTime start = _takenDate!;
@@ -394,6 +396,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
           _days = 0;
           _totalInterest = 0.0;
           _totalAmount = asol;
+          _calculatedInterestRate = 0.0;
         });
         return;
       }
@@ -416,16 +419,27 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
       _months = m;
       _days = d;
 
-      int totalDaysDiff = end.difference(start).inDays;
+      // মোট পূর্ণ মাস বের করা
+      int totalFullMonths = m + (y * 12);
+      double effectiveMonths = totalFullMonths.toDouble();
 
-      double monthlyInterestRate = rate / 100;
-      double dailyInterest = (asol * monthlyInterestRate) / 30;
+      // ১-১৫ দিন = ০.৫ মাস (হাফ সুদ), ১৬-৩১ দিন = ১ পূর্ণ মাস (ফুল সুদ)
+      if (d >= 1 && d <= 15) {
+        effectiveMonths += 0.5;
+      } else if (d >= 16) {
+        effectiveMonths += 1.0;
+      }
 
-      _totalInterest = dailyInterest * totalDaysDiff;
+      // মোট সুদের শতকরা হার (%)
+      _calculatedInterestRate = effectiveMonths * monthlyRate;
+
+      // মোট সুদের টাকা
+      _totalInterest = (asol * _calculatedInterestRate) / 100;
       _totalAmount = asol + _totalInterest;
     } else {
       _totalInterest = 0.0;
       _totalAmount = asol;
+      _calculatedInterestRate = 0.0;
     }
     setState(() {});
   }
@@ -560,6 +574,17 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                 ),
                 child: Column(
                   children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("মোট সুদের হার:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                        Text(
+                          "${_calculatedInterestRate.toStringAsFixed(1)}%",
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
