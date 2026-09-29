@@ -21,6 +21,44 @@ class JewelleryApp extends StatelessWidget {
   }
 }
 
+// ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
+
+/// ইংরেজি সংখ্যাকে বাংলা ডিজিটে (০-৯) রূপান্তর করার ফাংশন
+String toBanglaDigit(String input) {
+  const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+  for (int i = 0; i < englishDigits.length; i++) {
+    input = input.replaceAll(englishDigits[i], banglaDigits[i]);
+  }
+  return input;
+}
+
+/// সংখ্যানুসারে বাংলাদেশি কমা (১,০০,০০০ / ১০,০০,০০০) ফরম্যাট করার ফাংশন
+String formatNumberWithCommas(double number, {bool isCurrency = false}) {
+  String numStr = isCurrency ? number.toStringAsFixed(2) : number.toStringAsFixed(1);
+  List<String> parts = numStr.split('.');
+  String integerPart = parts[0];
+  String decimalPart = parts.length > 1 ? parts[1] : '';
+
+  if (integerPart.length > 3) {
+    String lastThree = integerPart.substring(integerPart.length - 3);
+    String remaining = integerPart.substring(0, integerPart.length - 3);
+
+    RegExp regExp = RegExp(r'\d{1,2}(?=(\d{2})+(?!\d))');
+    String formattedRemaining = remaining.replaceAllMapped(regExp, (Match m) => '${m[0]},');
+
+    integerPart = '$formattedRemaining,$lastThree';
+  }
+
+  if (isCurrency) {
+    return toBanglaDigit('$integerPart.$decimalPart');
+  } else {
+    // যদি দশমিকের পরে ০ থাকে তাহলে সেটা বাদ রাখা বা দেখানো
+    return decimalPart == '0' ? toBanglaDigit(integerPart) : toBanglaDigit('$integerPart.$decimalPart');
+  }
+}
+
 // ================= ১. হোম স্ক্রিন =================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -103,9 +141,9 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: const Column(
+                        child: Column(
                           children: [
-                            Text(
+                            const Text(
                               'পরমা জুয়েলার্স',
                               style: TextStyle(
                                 color: Color(0xFFFFD700),
@@ -115,10 +153,10 @@ class HomeScreen extends StatelessWidget {
                               ),
                               textAlign: TextAlign.center,
                             ),
-                            SizedBox(height: 6),
+                            const SizedBox(height: 6),
                             Text(
-                              'কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর',
-                              style: TextStyle(
+                              toBanglaDigit('কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 14,
                                 fontWeight: FontWeight.w500,
@@ -183,7 +221,7 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             _buildWhiteCard(
                               context: context,
-                              title: '২৪ ক্যারেট সোনার\nদাম',
+                              title: toBanglaDigit('২৪ ক্যারেট সোনার\nদাম'),
                               icon: Icons.star_border,
                               iconColor: Colors.amber,
                             ),
@@ -327,7 +365,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ========== ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ (নতুন সুদের লজিক সহ) ==========
+// ========== ২. বন্ধকী হিসাব ক্যালকুলেটর পেজ (বাংলা ডিজিট ও বাংলাদেশি কমা ফরম্যাট সহ) ==========
 class BondhokiCalculatorScreen extends StatefulWidget {
   const BondhokiCalculatorScreen({super.key});
 
@@ -344,7 +382,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
   double _totalInterest = 0.0;
   double _totalAmount = 0.0;
-  double _calculatedInterestRate = 0.0; // মোট কত পার্সেন্ট সুদ হলো
+  double _calculatedInterestRate = 0.0;
 
   int _years = 0;
   int _months = 0;
@@ -380,7 +418,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
     }
   }
 
-  // ================= আপনার নতুন সুদের কাস্টম লজিক =================
+  // ================= সুদের কাস্টম লজিক =================
   void _calculateInterest() {
     double asol = double.tryParse(_asolController.text) ?? 0.0;
     double monthlyRate = double.tryParse(_rateController.text) ?? 2.0;
@@ -419,7 +457,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
       _months = m;
       _days = d;
 
-      // মোট পূর্ণ মাস বের করা
       int totalFullMonths = m + (y * 12);
       double effectiveMonths = totalFullMonths.toDouble();
 
@@ -430,10 +467,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
         effectiveMonths += 1.0;
       }
 
-      // মোট সুদের শতকরা হার (%)
       _calculatedInterestRate = effectiveMonths * monthlyRate;
-
-      // মোট সুদের টাকা
       _totalInterest = (asol * _calculatedInterestRate) / 100;
       _totalAmount = asol + _totalInterest;
     } else {
@@ -446,7 +480,8 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
   String _formatDate(DateTime? date) {
     if (date == null) return "তারিখ নির্বাচন করুন";
-    return "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+    String formatted = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}";
+    return toBanglaDigit(formatted);
   }
 
   @override
@@ -469,10 +504,10 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                 child: TextField(
                   controller: _asolController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: 'যেমন: ১০০০০',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: InputDecoration(
+                    hintText: toBanglaDigit('যেমন: ১০,০০০ বা ১,০০,০০০'),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
                   onChanged: (val) => _calculateInterest(),
                 ),
@@ -540,7 +575,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                     const Text("মোট সময় হয়েছে:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
                     const SizedBox(height: 4),
                     Text(
-                      "$_years বছর, $_months মাস, $_days দিন",
+                      toBanglaDigit("$_years বছর, $_months মাস, $_days দিন"),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
                   ],
@@ -554,10 +589,10 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                 child: TextField(
                   controller: _rateController,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    hintText: '২.০',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: InputDecoration(
+                    hintText: toBanglaDigit('২.০'),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
                   onChanged: (val) => _calculateInterest(),
                 ),
@@ -579,7 +614,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                       children: [
                         const Text("মোট সুদের হার:", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                         Text(
-                          "${_calculatedInterestRate.toStringAsFixed(1)}%",
+                          "${formatNumberWithCommas(_calculatedInterestRate)}%",
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent),
                         ),
                       ],
@@ -590,7 +625,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                       children: [
                         const Text("মোট সুদ:", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                         Text(
-                          "৳ ${_totalInterest.toStringAsFixed(2)}",
+                          "৳ ${formatNumberWithCommas(_totalInterest, isCurrency: true)}",
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
                         ),
                       ],
@@ -601,7 +636,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                       children: [
                         const Text("সুদাসল (মোট টাকা):", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         Text(
-                          "৳ ${_totalAmount.toStringAsFixed(2)}",
+                          "৳ ${formatNumberWithCommas(_totalAmount, isCurrency: true)}",
                           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
                         ),
                       ],
