@@ -21,7 +21,7 @@ class JewelleryApp extends StatelessWidget {
   }
 }
 
-// =================১. হোম স্ক্রিন =================
+// ================= ১. হোম স্ক্রিন =================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -349,7 +349,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
   int _months = 0;
   int _days = 0;
 
-  // তারিখ সিলেক্ট করার ফাংশন
   Future<void> _selectTakenDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -380,7 +379,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
     }
   }
 
-  // সুদ ও দিন হিসাবের লজিক
   void _calculateInterest() {
     double asol = double.tryParse(_asolController.text) ?? 0.0;
     double rate = double.tryParse(_rateController.text) ?? 0.0;
@@ -400,7 +398,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
         return;
       }
 
-      // দিন, মাস ও বছর পার্থক্য বের করা
       int y = end.year - start.year;
       int m = end.month - start.month;
       int d = end.day - start.day;
@@ -419,10 +416,8 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
       _months = m;
       _days = d;
 
-      // মোট দিনের সংখ্যা
       int totalDaysDiff = end.difference(start).inDays;
 
-      // মাসিক ২% সুদের ক্ষেত্রে দৈনিক সুদ = (আসল * হার / ১০০) / ৩০ দিন
       double monthlyInterestRate = rate / 100;
       double dailyInterest = (asol * monthlyInterestRate) / 30;
 
@@ -455,7 +450,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ১. আসলের ঘর
               _buildInputCard(
                 title: "আসল (টাকা)",
                 child: TextField(
@@ -472,7 +466,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
               const SizedBox(height: 12),
 
-              // ২. নেওয়ার তারিখ
               _buildInputCard(
                 title: "নেওয়ার তারিখ (দিন/মাস/বছর)",
                 child: InkWell(
@@ -496,7 +489,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
               const SizedBox(height: 12),
 
-              // ৩. আজকের তারিখ
               _buildInputCard(
                 title: "আজকের তারিখ (দিন/মাস/বছর)",
                 child: InkWell(
@@ -520,7 +512,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
               const SizedBox(height: 12),
 
-              // ৪. সময় ব্যবধান ডিসপ্লে (অটোমেটিক)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -544,7 +535,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
               const SizedBox(height: 12),
 
-              // ৫. সুদের হার (%)
               _buildInputCard(
                 title: "সুদের হার (% প্রতি মাস)",
                 child: TextField(
@@ -561,7 +551,6 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
 
               const SizedBox(height: 16),
 
-              // ৬. ফলাফল (মোট সুদ ও সুদাসল)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -613,7 +602,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black70)),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54)),
           const SizedBox(height: 8),
           child,
         ],
