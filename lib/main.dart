@@ -266,11 +266,13 @@ class HomeScreen extends StatelessWidget {
                               icon: Icons.tune,
                               iconColor: Colors.red,
                             ),
+                            // ওজন যোগ-বিয়োগ (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'ওজন যোগ-বিয়োগ',
                               icon: Icons.add,
                               iconColor: Colors.green,
+                              targetScreen: const WeightAddSubtractScreen(),
                             ),
                             // হাত লস (এক্টিভ অপশন)
                             _buildWhiteCard(
@@ -670,7 +672,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
   }
 }
 
-// ========== ৩. হাত লস ক্যালকুলেটর পেজ (নতুন সংযোজন) ==========
+// ========== ৩. হাত লস ক্যালকুলেটর পেজ ==========
 class HatLossCalculatorScreen extends StatefulWidget {
   const HatLossCalculatorScreen({super.key});
 
@@ -679,8 +681,6 @@ class HatLossCalculatorScreen extends StatefulWidget {
 }
 
 class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
-  // ১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি, ১ রতি = ১০ পয়েন্ট => ১ ভরি = ৯৬০ পয়েন্ট
-  // বাই ডিফল্ট: ১ আনা ২ রতি = (১*৬০ + ২*১০) = ৮০ পয়েন্ট
   final TextEditingController _lossRateController = TextEditingController(text: "80");
 
   final TextEditingController _voriController = TextEditingController();
@@ -701,15 +701,11 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
     double roti = double.tryParse(_rotiController.text) ?? 0.0;
     double point = double.tryParse(_pointController.text) ?? 0.0;
 
-    // মোট গহনার ওজন পয়েন্টে রূপান্তর (১ ভরি = ৯৬০ পয়েন্ট, ১ আনা = ৬০ পয়েন্ট, ১ রতি = ১০ পয়েন্ট)
     double totalJewelleryPoints = (vori * 960) + (ana * 60) + (roti * 10) + point;
 
     if (totalJewelleryPoints > 0 && lossRatePerVoriPoints > 0) {
-      // ঐকিক নিয়ম: ৯৬০ পয়েন্টে (১ ভরি) লস হয় lossRatePerVoriPoints
-      // তাহলে totalJewelleryPoints-এ লস হবে (totalJewelleryPoints * lossRatePerVoriPoints) / 960
       _totalLossPoints = (totalJewelleryPoints * lossRatePerVoriPoints) / 960.0;
 
-      // পয়েন্ট থেকে আনা, রতি ও অবশিষ্ট পয়েন্ট বের করা
       int totalAna = (_totalLossPoints / 60).floor();
       double remPointsAfterAna = _totalLossPoints % 60;
 
@@ -744,7 +740,6 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ১. ভরি প্রতি লসের পরিমাণ নির্ধারণ
               _buildCard(
                 title: "ভরি প্রতি লসের হার (পয়েন্টে)",
                 child: Column(
@@ -772,7 +767,6 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
 
               const SizedBox(height: 14),
 
-              // ২. গহনার ওজন নেওয়ার ইনপুটসমূহ
               _buildCard(
                 title: "গহনার ওজন লিখুন",
                 child: Column(
@@ -818,7 +812,6 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
 
               const SizedBox(height: 16),
 
-              // ৩. মোট লস গণনার ফলাফল
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -910,6 +903,327 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
           const SizedBox(height: 8),
           child,
         ],
+      ),
+    );
+  }
+}
+
+// ========== ৪. ওজন যোগ-বিয়োগ স্ক্রিন (নতুন সংযোজন) ==========
+class WeightAddSubtractScreen extends StatefulWidget {
+  const WeightAddSubtractScreen({super.key});
+
+  @override
+  State<WeightAddSubtractScreen> createState() => _WeightAddSubtractScreenState();
+}
+
+class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
+  String _displayExpression = ""; 
+  String _currentNumberInput = ""; 
+  
+  List<double> _weightPointsList = []; 
+  List<String> _operatorsList = [];
+
+  double _currentVori = 0;
+  double _currentAna = 0;
+  double _currentRoti = 0;
+  double _currentPoint = 0;
+
+  // ডিজিট ইনপুট
+  void _onDigitPress(String digit) {
+    setState(() {
+      _currentNumberInput += digit;
+      _displayExpression += toBanglaDigit(digit);
+    });
+  }
+
+  // ভরি, আনা, রতি, পয়েন্ট বাটনের লজিক
+  void _onUnitPress(String unit) {
+    if (_currentNumberInput.isEmpty) return;
+
+    double val = double.tryParse(_currentNumberInput) ?? 0;
+    if (unit == 'ভরি') _currentVori = val;
+    if (unit == 'আনা') _currentAna = val;
+    if (unit == 'রতি') _currentRoti = val;
+    if (unit == 'পয়েন্ট') _currentPoint = val;
+
+    setState(() {
+      _displayExpression += " $unit ";
+      _currentNumberInput = "";
+    });
+  }
+
+  // অপরেটর (+ / -) বাটনের লজিক
+  void _onOperatorPress(String op) {
+    _pushCurrentWeightToPoints();
+
+    setState(() {
+      _operatorsList.add(op);
+      _displayExpression += " $op ";
+    });
+  }
+
+  void _pushCurrentWeightToPoints() {
+    double totalPts = (_currentVori * 960) + (_currentAna * 60) + (_currentRoti * 10) + _currentPoint;
+    _weightPointsList.add(totalPts);
+
+    _currentVori = 0;
+    _currentAna = 0;
+    _currentRoti = 0;
+    _currentPoint = 0;
+    _currentNumberInput = "";
+  }
+
+  // '=' বাটন লজিক
+  void _onEqualPress() {
+    if (_currentNumberInput.isNotEmpty || _currentVori > 0 || _currentAna > 0 || _currentRoti > 0 || _currentPoint > 0) {
+      _pushCurrentWeightToPoints();
+    }
+
+    if (_weightPointsList.isEmpty) return;
+
+    double resultPts = _weightPointsList[0];
+
+    for (int i = 0; i < _operatorsList.length; i++) {
+      if (i + 1 < _weightPointsList.length) {
+        if (_operatorsList[i] == '+') {
+          resultPts += _weightPointsList[i + 1];
+        } else if (_operatorsList[i] == '-') {
+          resultPts -= _weightPointsList[i + 1];
+        }
+      }
+    }
+
+    // ফলাফলকে পুনরায় ভরি, আনা, রতি ও পয়েন্টে পরিবর্তন
+    bool isNegative = resultPts < 0;
+    double absPts = resultPts.abs();
+
+    int vori = (absPts / 960).floor();
+    double rem1 = absPts % 960;
+
+    int ana = (rem1 / 60).floor();
+    double rem2 = rem1 % 60;
+
+    int roti = (rem2 / 10).floor();
+    double point = rem2 % 10;
+
+    String resStr = "";
+    if (vori > 0) resStr += "$vori ভরি ";
+    if (ana > 0) resStr += "$ana আনা ";
+    if (roti > 0) resStr += "$roti রতি ";
+    if (point > 0 || resStr.isEmpty) resStr += "${point.toStringAsFixed(1)} পয়েন্ট";
+
+    if (isNegative) resStr = "- $resStr";
+
+    setState(() {
+      _displayExpression = toBanglaDigit(resStr);
+      _clearCalculationData();
+    });
+  }
+
+  void _clearCalculationData() {
+    _currentNumberInput = "";
+    _weightPointsList.clear();
+    _operatorsList.clear();
+    _currentVori = 0;
+    _currentAna = 0;
+    _currentRoti = 0;
+    _currentPoint = 0;
+  }
+
+  void _onACPress() {
+    setState(() {
+      _displayExpression = "";
+      _clearCalculationData();
+    });
+  }
+
+  void _onDelPress() {
+    if (_displayExpression.isNotEmpty) {
+      setState(() {
+        _displayExpression = _displayExpression.substring(0, _displayExpression.length - 1);
+        if (_currentNumberInput.isNotEmpty) {
+          _currentNumberInput = _currentNumberInput.substring(0, _currentNumberInput.length - 1);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('ওজন যোগ-বিয়োগ', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Column(
+        children: [
+          // ১. ক্যালকুলেটরের বড় ডিসপ্লে স্ক্রিন
+          Expanded(
+            flex: 2,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              color: Colors.black87,
+              alignment: Alignment.bottomRight,
+              child: SingleChildScrollView(
+                reverse: true,
+                child: Text(
+                  _displayExpression.isEmpty ? '০' : _displayExpression,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ),
+          ),
+
+          // ২. ৪টি অরেঞ্জ হাইলাইটেড বাটন (ভরি, আনা, রতি, পয়েন্ট)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+            color: Colors.grey.shade200,
+            child: Row(
+              children: [
+                _buildUnitButton('ভরি'),
+                const SizedBox(width: 6),
+                _buildUnitButton('আনা'),
+                const SizedBox(width: 6),
+                _buildUnitButton('রতি'),
+                const SizedBox(width: 6),
+                _buildUnitButton('পয়েন্ট'),
+              ],
+            ),
+          ),
+
+          // ৩. ক্যালকুলেটর কিপ্যাড (১-০, AC, Del, +, -, =)
+          Expanded(
+            flex: 4,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              color: Colors.grey.shade100,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildCalcButton('AC', color: Colors.redAccent, textColor: Colors.white, onTap: _onACPress),
+                        _buildCalcButton('Del', color: Colors.orange.shade800, textColor: Colors.white, onTap: _onDelPress),
+                        _buildCalcButton('-', color: Colors.amber.shade700, textColor: Colors.white, onTap: () => _onOperatorPress('-')),
+                        _buildCalcButton('+', color: Colors.amber.shade700, textColor: Colors.white, onTap: () => _onOperatorPress('+')),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildCalcButton('7', onTap: () => _onDigitPress('7')),
+                        _buildCalcButton('8', onTap: () => _onDigitPress('8')),
+                        _buildCalcButton('9', onTap: () => _onDigitPress('9')),
+                        _buildCalcButton('=', color: Colors.green, textColor: Colors.white, isEqual: true, onTap: _onEqualPress),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildCalcButton('4', onTap: () => _onDigitPress('4')),
+                        _buildCalcButton('5', onTap: () => _onDigitPress('5')),
+                        _buildCalcButton('6', onTap: () => _onDigitPress('6')),
+                        const Expanded(child: SizedBox()), 
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildCalcButton('1', onTap: () => _onDigitPress('1')),
+                        _buildCalcButton('2', onTap: () => _onDigitPress('2')),
+                        _buildCalcButton('3', onTap: () => _onDigitPress('3')),
+                        const Expanded(child: SizedBox()),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _buildCalcButton('0', flex: 2, onTap: () => _onDigitPress('0')),
+                        _buildCalcButton('.', onTap: () => _onDigitPress('.')),
+                        const Expanded(child: SizedBox()),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // অরেঞ্জ কালারের ভরি, আনা, রতি, পয়েন্ট বাটন তৈরির উইজেট
+  Widget _buildUnitButton(String label) {
+    return Expanded(
+      child: Material(
+        color: Colors.deepOrange,
+        borderRadius: BorderRadius.circular(8),
+        elevation: 2,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _onUnitPress(label),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ক্যালকুলেটর কিপ্যাড বাটন তৈরির উইজেট
+  Widget _buildCalcButton(
+    String label, {
+    Color color = Colors.white,
+    Color textColor = Colors.black87,
+    int flex = 1,
+    bool isEqual = false,
+    VoidCallback? onTap,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        margin: const EdgeInsets.all(4),
+        child: Material(
+          color: color,
+          borderRadius: BorderRadius.circular(8),
+          elevation: 2,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Center(
+              child: Text(
+                toBanglaDigit(label),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
