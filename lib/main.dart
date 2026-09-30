@@ -254,7 +254,6 @@ class HomeScreen extends StatelessWidget {
                               icon: Icons.pie_chart_outline,
                               iconColor: Colors.indigo,
                             ),
-                            // ভরি ও পয়েন্ট কনভার্টার (নতুন সংযুক্ত এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'ভরি ও পয়েন্ট\nকনভার্টার',
@@ -262,7 +261,6 @@ class HomeScreen extends StatelessWidget {
                               iconColor: Colors.deepOrange,
                               targetScreen: const VoriPointConverterScreen(),
                             ),
-                            // ক্যারেট কনভার্টার (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'ক্যারেট কনভার্টার',
@@ -270,7 +268,6 @@ class HomeScreen extends StatelessWidget {
                               iconColor: Colors.red,
                               targetScreen: const CaratConverterScreen(),
                             ),
-                            // ওজন যোগ-বিয়োগ (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'ওজন যোগ-বিয়োগ',
@@ -278,7 +275,6 @@ class HomeScreen extends StatelessWidget {
                               iconColor: Colors.green,
                               targetScreen: const WeightAddSubtractScreen(),
                             ),
-                            // হাত লস (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'হাত লস',
@@ -286,7 +282,6 @@ class HomeScreen extends StatelessWidget {
                               iconColor: Colors.brown,
                               targetScreen: const HatLossCalculatorScreen(),
                             ),
-                            // বন্ধকী হিসাব (এক্টিভ অপশন)
                             _buildWhiteCard(
                               context: context,
                               title: 'বন্ধকী হিসাব',
@@ -1223,7 +1218,7 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
   }
 }
 
-// ========== ৫. ক্যারেট কনভার্টার স্ক্রিন ==========
+// ========== ৫. ক্যারেট কনভার্টার স্ক্রিন (আপডেটেড: ২৪ ক্যারেট ড্রপডাউন সহ) ==========
 class CaratConverterScreen extends StatefulWidget {
   const CaratConverterScreen({super.key});
 
@@ -1233,7 +1228,7 @@ class CaratConverterScreen extends StatefulWidget {
 
 class _CaratConverterScreenState extends State<CaratConverterScreen> {
   String selectedCalculationType = 'ক্যারেট থেকে খাঁটি ও খাদ বের করা';
-  int targetCarat = 22;
+  int targetCarat = 24; // ডিফল্ট টার্গেট ২৪ ক্যারেট
   int currentCarat = 18;
 
   final TextEditingController _voriController = TextEditingController();
@@ -1297,7 +1292,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
         resultAlloy = _pointsToTraditionalUnit(alloyPoints);
         resultMessage = null;
       } else {
-        if (targetCarat >= currentCarat) {
+        if (targetCarat >= currentCarat && targetCarat != 24) {
           resultTotalWeight = null;
           resultPureGold = null;
           resultAlloy = null;
@@ -1401,6 +1396,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                                     isExpanded: true,
                                     value: targetCarat,
                                     items: const [
+                                      DropdownMenuItem(value: 24, child: Text('২৪ ক্যারেট')),
                                       DropdownMenuItem(value: 22, child: Text('২২ ক্যারেট')),
                                       DropdownMenuItem(value: 21, child: Text('২১ ক্যারেট')),
                                       DropdownMenuItem(value: 18, child: Text('১৮ ক্যারেট')),
@@ -1556,7 +1552,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
   }
 }
 
-// ========== ৬. ভরি ও পয়েন্ট কনভার্টার স্ক্রিন (২য় কোড থেকে সংকলিত) ==========
+// ========== ৬. ভরি ও পয়েন্ট কনভার্টার স্ক্রিন ==========
 class VoriPointConverterScreen extends StatefulWidget {
   const VoriPointConverterScreen({super.key});
 
