@@ -247,6 +247,7 @@ class HomeScreen extends StatelessWidget {
                               title: 'পাকা পরতা\nক্যালকুলেটর',
                               icon: Icons.layers_outlined,
                               iconColor: Colors.teal,
+                              targetScreen: const GoldCalculatorScreen(),
                             ),
                             _buildWhiteCard(
                               context: context,
@@ -368,7 +369,7 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ========== ২. নতুন: খাদ হিসাব স্ক্রিন ==========
+// ========== ২. খাদ হিসাব স্ক্রিন ==========
 class KhadCalculatorScreen extends StatefulWidget {
   const KhadCalculatorScreen({super.key});
 
@@ -387,13 +388,10 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
   String _resultKhad = "";
   String _resultPaka = "";
 
-  // ক্যারেট অনুযায়ী ভরি প্রতি খাদ ও পাকা জানার ফাংশন
-  // ১ ভরি = ৯৬০ পয়েন্ট (১৬ আনা * ৬০ পয়েন্ট)
-  // ১ আনা = ৬০ পয়েন্ট, ১ রতি = ১০ পয়েন্ট
   double _getKhadRatio(int carat) {
-    if (carat == 22) return (1 * 60 + 2 * 10) / 960.0; // ৮০ পয়েন্ট / ৯৬০ পয়েন্ট = ৮.৩৩%
-    if (carat == 21) return (2 * 60) / 960.0;          // ১২০ পয়েন্ট / ৯৬০ পয়েন্ট = ১২.৫%
-    if (carat == 18) return (4 * 60) / 960.0;          // ২৪০ পয়েন্ট / ৯৬০ পয়েন্ট = ২৫%
+    if (carat == 22) return (1 * 60 + 2 * 10) / 960.0; 
+    if (carat == 21) return (2 * 60) / 960.0;          
+    if (carat == 18) return (4 * 60) / 960.0;          
     return 0.0;
   }
 
@@ -438,7 +436,6 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
     });
   }
 
-  // খাদ সাধারণত আনা, রতি ও পয়েন্টে দেখানো হয়
   String _formatPointsToKhadUnit(double totalPoints) {
     int totalPts = totalPoints.round();
     int ana = totalPts ~/ 60;
@@ -449,7 +446,6 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
     return toBanglaDigit("$ana আনা $roti রতি ${point.toStringAsFixed(1).replaceAll('.0', '')} পয়েন্ট");
   }
 
-  // পাকা সোনা ভরি, আনা, রতি ও পয়েন্টে দেখানো হয়
   String _formatPointsToPakaUnit(double totalPoints) {
     int totalPts = totalPoints.round();
     int vori = totalPts ~/ 960;
@@ -479,7 +475,6 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ক্যারেট নির্বাচন হেডলাইন ও ড্রপডাউন
             const Text(
               'ক্যারেট সিলেক্ট করুন',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
@@ -514,34 +509,24 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // ভরি প্রতি খাদ প্রদর্শন বক্স
             _buildInfoDisplayBox(
               title: "ভরি প্রতি খাদ:",
               value: toBanglaDigit(_getPerVoriKhadText(_selectedCarat)),
               valueColor: Colors.red.shade700,
             ),
-
             const SizedBox(height: 12),
-
-            // ভরি প্রতি পাকা প্রদর্শন বক্স
             _buildInfoDisplayBox(
               title: "ভরি প্রতি পাকা:",
               value: toBanglaDigit(_getPerVoriPakaText(_selectedCarat)),
               valueColor: Colors.green.shade700,
             ),
-
             const SizedBox(height: 20),
-
-            // গহনার ওজন ইনপুট সেকশন
             const Text(
               'গহনার ওজন ইনপুট দেন',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
             const SizedBox(height: 10),
-
             Row(
               children: [
                 Expanded(child: _buildWeightInput(_voriController, 'ভরি')),
@@ -553,17 +538,14 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
                 Expanded(child: _buildWeightInput(_pointController, 'পয়েন্ট')),
               ],
             ),
-
             const SizedBox(height: 24),
-
-            // হিসাব করুন বাটন (হলুদ কালার, কালো বোল্ড টেক্সট)
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFFD700), // হলুদ কালার
-                  foregroundColor: Colors.black, // লেখার কালার কালো
+                  backgroundColor: const Color(0xFFFFD700),
+                  foregroundColor: Colors.black,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -574,15 +556,12 @@ class _KhadCalculatorScreenState extends State<KhadCalculatorScreen> {
                   'হিসাব করুন',
                   style: TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold, // বোল্ড
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-
             const SizedBox(height: 20),
-
-            // ফলাফল প্রদর্শনী
             if (_resultKhad.isNotEmpty && _resultPaka.isNotEmpty)
               Container(
                 width: double.infinity,
@@ -824,9 +803,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                   onChanged: (val) => _calculateInterest(),
                 ),
               ),
-
               const SizedBox(height: 12),
-
               _buildInputCard(
                 title: "নেওয়ার তারিখ (দিন/মাস/বছর)",
                 child: InkWell(
@@ -847,9 +824,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
               _buildInputCard(
                 title: "আজকের তারিখ (দিন/মাস/বছর)",
                 child: InkWell(
@@ -870,9 +845,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 12),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
@@ -893,9 +866,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 12),
-
               _buildInputCard(
                 title: "সুদের হার (% প্রতি মাস)",
                 child: TextField(
@@ -909,9 +880,7 @@ class _BondhokiCalculatorScreenState extends State<BondhokiCalculatorScreen> {
                   onChanged: (val) => _calculateInterest(),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -1075,9 +1044,7 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 14),
-
               _buildCard(
                 title: "গহনার ওজন লিখুন",
                 child: Column(
@@ -1120,9 +1087,7 @@ class _HatLossCalculatorScreenState extends State<HatLossCalculatorScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
-
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -1385,7 +1350,6 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
               ),
             ),
           ),
-
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             color: Colors.grey.shade200,
@@ -1401,7 +1365,6 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
               ],
             ),
           ),
-
           Expanded(
             flex: 4,
             child: Container(
@@ -1689,7 +1652,6 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-
                         Expanded(
                           flex: 2,
                           child: Column(
@@ -1728,7 +1690,6 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                         ),
                       ],
                     ),
-
                     if (selectedCalculationType == 'খাদ দিয়ে ক্যারেট তৈরি করা') ...[
                       const SizedBox(height: 12),
                       Column(
@@ -1768,9 +1729,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
             const Text("ওজন ইনপুট দিন:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 8),
             Row(
@@ -1784,9 +1743,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                 _buildInputField(_pointController, "পয়েন্ট"),
               ],
             ),
-
             const SizedBox(height: 20),
-
             ElevatedButton(
               onPressed: _calculate,
               style: ElevatedButton.styleFrom(
@@ -1802,9 +1759,7 @@ class _CaratConverterScreenState extends State<CaratConverterScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ),
-
             const SizedBox(height: 20),
-
             if (resultMessage != null || resultTotalWeight != null)
               Card(
                 color: Colors.amber[50],
@@ -1965,7 +1920,6 @@ class _VoriPointConverterScreenState extends State<VoriPointConverterScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
-
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -2004,7 +1958,6 @@ class _VoriPointConverterScreenState extends State<VoriPointConverterScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-
                     if (_selectedMode == 'VoriToPoint') ...[
                       const Text(
                         'ওজন অনুযায়ী ইনপুট দিন:',
@@ -2038,9 +1991,7 @@ class _VoriPointConverterScreenState extends State<VoriPointConverterScreen> {
                       const SizedBox(height: 10),
                       _buildInputField(_singlePointController, 'পয়েন্ট লিখুন'),
                     ],
-
                     const SizedBox(height: 24),
-
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -2063,7 +2014,6 @@ class _VoriPointConverterScreenState extends State<VoriPointConverterScreen> {
                         ),
                       ),
                     ),
-
                     if (_resultText.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Container(
@@ -2110,5 +2060,251 @@ class _VoriPointConverterScreenState extends State<VoriPointConverterScreen> {
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       ),
     );
+  }
+}
+
+// ========== ৮. পাকা পরতা ক্যালকুলেটর স্ক্রিন ==========
+class GoldCalculatorScreen extends StatefulWidget {
+  const GoldCalculatorScreen({super.key});
+
+  @override
+  State<GoldCalculatorScreen> createState() => _GoldCalculatorScreenState();
+}
+
+class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
+  final TextEditingController _rate24Controller = TextEditingController(text: '200000');
+  final TextEditingController _targetKaratController = TextEditingController(text: '22');
+  
+  final TextEditingController _voriController = TextEditingController();
+  final TextEditingController _anaController = TextEditingController();
+  final TextEditingController _rotiController = TextEditingController();
+  final TextEditingController _pointController = TextEditingController();
+
+  double _perVoriPrice = 0.0;
+  double _totalPrice = 0.0;
+  double _calculatedKarat = 0.0;
+  bool _hasCalculated = false;
+
+  void _calculatePrice() {
+    FocusScope.of(context).unfocus();
+
+    final double rate24 = double.tryParse(_rate24Controller.text) ?? 0.0;
+    final double targetKarat = double.tryParse(_targetKaratController.text) ?? 0.0;
+
+    final double vori = double.tryParse(_voriController.text) ?? 0.0;
+    final double ana = double.tryParse(_anaController.text) ?? 0.0;
+    final double roti = double.tryParse(_rotiController.text) ?? 0.0;
+    final double point = double.tryParse(_pointController.text) ?? 0.0;
+
+    if (rate24 <= 0 || targetKarat <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('অনুগ্রহ করে সঠিক ২৪ ক্যারেটের দাম ও টার্গেট ক্যারেট দিন')),
+      );
+      return;
+    }
+
+    // ১. টার্গেট ক্যারেটের প্রতি ভরির দাম নির্ধারণ
+    double calculatedRatePerVori = 0.0;
+
+    if (targetKarat == 22) {
+      calculatedRatePerVori = rate24 * (1 - 0.08333333);
+    } else if (targetKarat == 21) {
+      calculatedRatePerVori = rate24 * (1 - 0.125);
+    } else if (targetKarat == 18) {
+      calculatedRatePerVori = rate24 * (1 - 0.25);
+    } else {
+      calculatedRatePerVori = rate24 * (targetKarat / 24);
+    }
+
+    // ২. মোট ওজন ভরিতে রূপান্তর (১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি, ১ রতি = ১০ পয়েন্ট)
+    final double totalVori = vori + (ana / 16) + (roti / 96) + (point / 960);
+
+    // ৩. মোট দাম
+    final double calculatedTotalPrice = totalVori * calculatedRatePerVori;
+
+    setState(() {
+      _perVoriPrice = calculatedRatePerVori;
+      _totalPrice = calculatedTotalPrice;
+      _calculatedKarat = targetKarat;
+      _hasCalculated = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('পাকা পরতা ক্যালকুলেটর', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'রেট কনফিগারেশন',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(thickness: 1.5),
+                    const SizedBox(height: 12),
+
+                    const Text(
+                      '২৪ ক্যা: সোনার দাম (১ ভরি)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _rate24Controller,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'সোনার দাম লিখুন',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      'টার্গেট ক্যারেট (যেমন: ২২, ২১, ১৮)',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _targetKaratController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'টার্গেট ক্যারেট লিখুন',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'সোনার ওজন ইনপুট দিন',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildWeightField(_voriController, 'ভরি'),
+                const SizedBox(width: 6),
+                _buildWeightField(_anaController, 'আনা'),
+                const SizedBox(width: 6),
+                _buildWeightField(_rotiController, 'রতি'),
+                const SizedBox(width: 6),
+                _buildWeightField(_pointController, 'পয়েন্ট'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFCC00),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: _calculatePrice,
+                child: const Text(
+                  'হিসাব করুন',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            if (_hasCalculated) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      toBanglaDigit('${_calculatedKarat.toStringAsFixed(_calculatedKarat.truncateToDouble() == _calculatedKarat ? 0 : 1)} ক্যারেটের প্রতি ভরির দাম: ৳ ${formatNumberWithCommas(_perVoriPrice, isCurrency: true)}'),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      toBanglaDigit('মোট দাম: ৳ ${formatNumberWithCommas(_totalPrice, isCurrency: true)}'),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepOrange,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeightField(TextEditingController controller, String label) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.symmetric(vertical: 8),
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _rate24Controller.dispose();
+    _targetKaratController.dispose();
+    _voriController.dispose();
+    _anaController.dispose();
+    _rotiController.dispose();
+    _pointController.dispose();
+    super.dispose();
   }
 }
