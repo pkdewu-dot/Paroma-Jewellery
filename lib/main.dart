@@ -291,6 +291,14 @@ class HomeScreen extends StatelessWidget {
                               iconColor: Colors.deepPurple,
                               targetScreen: const BondhokiCalculatorScreen(),
                             ),
+                            // নতুন অপশন: কারিগর খতিয়ান
+                            _buildWhiteCard(
+                              context: context,
+                              title: 'কারিগর খতিয়ান',
+                              icon: Icons.menu_book_outlined,
+                              iconColor: Colors.amber.shade900,
+                              targetScreen: const KarigorKhotiyanScreen(),
+                            ),
                           ],
                         ),
                       ),
@@ -364,6 +372,281 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ========== কারিগর খতিয়ান স্ক্রিন ==========
+class KarigorKhotiyanScreen extends StatefulWidget {
+  const KarigorKhotiyanScreen({super.key});
+
+  @override
+  State<KarigorKhotiyanScreen> createState() => _KarigorKhotiyanScreenState();
+}
+
+class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
+  // ১. কারিগর কে প্রদান
+  final TextEditingController _prodanVori = TextEditingController();
+  final TextEditingController _prodanAna = TextEditingController();
+  final TextEditingController _prodanRoti = TextEditingController();
+  final TextEditingController _prodanPoint = TextEditingController();
+
+  // ২. কারিগর থেকে বুজ -> গহনার ওজন
+  final TextEditingController _gohonaVori = TextEditingController();
+  final TextEditingController _gohonaAna = TextEditingController();
+  final TextEditingController _gohonaRoti = TextEditingController();
+  final TextEditingController _gohonaPoint = TextEditingController();
+
+  // ৩. কারিগর থেকে বুজ -> বাকি সোনার ওজন
+  final TextEditingController _bakiVori = TextEditingController();
+  final TextEditingController _bakiAna = TextEditingController();
+  final TextEditingController _bakiRoti = TextEditingController();
+  final TextEditingController _bakiPoint = TextEditingController();
+
+  // ৪. হাত লস (প্রতি ভরি) - স্বয়ংক্রিয়
+  final TextEditingController _hatLossVori = TextEditingController();
+  final TextEditingController _hatLossAna = TextEditingController();
+  final TextEditingController _hatLossRoti = TextEditingController();
+  final TextEditingController _hatLossPoint = TextEditingController();
+
+  // ৫. অন্যান্য
+  final TextEditingController _onnannoVori = TextEditingController();
+  final TextEditingController _onnannoAna = TextEditingController();
+  final TextEditingController _onnannoRoti = TextEditingController();
+  final TextEditingController _onnannoPoint = TextEditingController();
+
+  // ৬. কারিগর থেকে মোট প্রাপ্তি
+  final TextEditingController _praptiVori = TextEditingController();
+  final TextEditingController _praptiAna = TextEditingController();
+  final TextEditingController _praptiRoti = TextEditingController();
+  final TextEditingController _praptiPoint = TextEditingController();
+
+  String _resultText = '';
+  Color _resultColor = Colors.black;
+
+  // ১ ভরি = ৯৬০ পয়েন্ট (১ আনা = ৬০, ১ রতি = ১০)
+  double _convertToPoints(String v, String a, String r, String p) {
+    double vori = double.tryParse(v) ?? 0;
+    double ana = double.tryParse(a) ?? 0;
+    double roti = double.tryParse(r) ?? 0;
+    double point = double.tryParse(p) ?? 0;
+
+    return (vori * 960) + (ana * 60) + (roti * 10) + point;
+  }
+
+  Map<String, double> _convertFromPoints(double totalPoints) {
+    double temp = totalPoints.abs();
+
+    int vori = temp ~/ 960;
+    temp = temp % 960;
+
+    int ana = temp ~/ 60;
+    temp = temp % 60;
+
+    int roti = temp ~/ 10;
+    double point = temp % 10;
+
+    return {
+      'vori': vori.toDouble(),
+      'ana': ana.toDouble(),
+      'roti': roti.toDouble(),
+      'point': double.parse(point.toStringAsFixed(1)),
+    };
+  }
+
+  void _calculateAll() {
+    setState(() {
+      double prodanPoints = _convertToPoints(_prodanVori.text, _prodanAna.text, _prodanRoti.text, _prodanPoint.text);
+      double gohonaPoints = _convertToPoints(_gohonaVori.text, _gohonaAna.text, _gohonaRoti.text, _gohonaPoint.text);
+      double bakiPoints = _convertToPoints(_bakiVori.text, _bakiAna.text, _bakiRoti.text, _bakiPoint.text);
+      double onnannoPoints = _convertToPoints(_onnannoVori.text, _onnannoAna.text, _onnannoRoti.text, _onnannoPoint.text);
+
+      // ১ ভরি (৯৬০ পয়েন্ট) গহনায় লস ১ আনা ২ রতি = ৮০ পয়েন্ট
+      // ঐকিক নিয়ম: হাত লস পয়েন্ট = (গহনার পয়েন্ট * ৮০) / ৯৬০
+      double calculatedLossPoints = (gohonaPoints * 80.0) / 960.0;
+      var lossFormatted = _convertFromPoints(calculatedLossPoints);
+
+      _hatLossVori.text = lossFormatted['vori']!.toInt().toString();
+      _hatLossAna.text = lossFormatted['ana']!.toInt().toString();
+      _hatLossRoti.text = lossFormatted['roti']!.toInt().toString();
+      _hatLossPoint.text = lossFormatted['point']!.toString();
+
+      // কারিগর থেকে মোট প্রাপ্তি = গহনার ওজন + বাকি সোনার ওজন + হাত লস + অন্যান্য
+      double totalPraptiPoints = gohonaPoints + bakiPoints + calculatedLossPoints + onnannoPoints;
+      var praptiFormatted = _convertFromPoints(totalPraptiPoints);
+
+      _praptiVori.text = praptiFormatted['vori']!.toInt().toString();
+      _praptiAna.text = praptiFormatted['ana']!.toInt().toString();
+      _praptiRoti.text = praptiFormatted['roti']!.toInt().toString();
+      _praptiPoint.text = praptiFormatted['point']!.toString();
+
+      // বিয়োগফল = কারিগর কে প্রদান - কারিগর থেকে মোট প্রাপ্তি
+      double diffPoints = prodanPoints - totalPraptiPoints;
+      var diffFormatted = _convertFromPoints(diffPoints);
+
+      String resStr = toBanglaDigit("${diffFormatted['vori']!.toInt()} ভরি ${diffFormatted['ana']!.toInt()} আনা ${diffFormatted['roti']!.toInt()} রতি ${diffFormatted['point']} পয়েন্ট");
+
+      if (diffPoints.abs() < 0.1) {
+        _resultText = "হিসাব সমান (০ গোলমাল)";
+        _resultColor = Colors.green.shade800;
+      } else if (diffPoints > 0) {
+        _resultText = "কারিগর থেকে পাওনা বাকি: $resStr";
+        _resultColor = Colors.red.shade800;
+      } else {
+        _resultText = "কারিগর বেশি জমা দিয়েছে: $resStr";
+        _resultColor = Colors.blue.shade800;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('কারিগর খতিয়ান', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: Container(
+        color: const Color(0xFFF5F5F5),
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ১. কারিগর কে প্রদান
+              _buildSectionHeader("কারিগর কে প্রদান"),
+              _buildFourInputBoxes(
+                v: _prodanVori, a: _prodanAna, r: _prodanRoti, p: _prodanPoint,
+                onChanged: (_) => _calculateAll(),
+              ),
+              const Divider(height: 28, thickness: 1.5),
+
+              // ২. কারিগর থেকে বুজ
+              _buildSectionHeader("কারিগর থেকে বুজ"),
+              
+              _buildSubHeader("গহনার ওজন"),
+              _buildFourInputBoxes(
+                v: _gohonaVori, a: _gohonaAna, r: _gohonaRoti, p: _gohonaPoint,
+                onChanged: (_) => _calculateAll(),
+              ),
+              const SizedBox(height: 10),
+
+              _buildSubHeader("বাকি সোনার ওজন"),
+              _buildFourInputBoxes(
+                v: _bakiVori, a: _bakiAna, r: _bakiRoti, p: _bakiPoint,
+                onChanged: (_) => _calculateAll(),
+              ),
+              const SizedBox(height: 10),
+
+              _buildSubHeader("হাত লস (প্রতি ভরি ১ আনা ২ রতি)"),
+              _buildFourInputBoxes(
+                v: _hatLossVori, a: _hatLossAna, r: _hatLossRoti, p: _hatLossPoint,
+                readOnly: true,
+              ),
+              const SizedBox(height: 10),
+
+              _buildSubHeader("অন্যান্য"),
+              _buildFourInputBoxes(
+                v: _onnannoVori, a: _onnannoAna, r: _onnannoRoti, p: _onnannoPoint,
+                onChanged: (_) => _calculateAll(),
+              ),
+              const Divider(height: 28, thickness: 1.5),
+
+              // ৩. কারিগর থেকে মোট প্রাপ্তি
+              _buildSectionHeader("কারিগর থেকে মোট প্রাপ্তি"),
+              _buildFourInputBoxes(
+                v: _praptiVori, a: _praptiAna, r: _praptiRoti, p: _praptiPoint,
+                readOnly: true,
+              ),
+              const SizedBox(height: 20),
+
+              // ৪. চূড়ান্ত ফলাফল বক্স
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _resultColor, width: 1.5),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                ),
+                child: Column(
+                  children: [
+                    const Text("ফলাফল (প্রদান - মোট প্রাপ্তি)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black54)),
+                    const SizedBox(height: 6),
+                    Text(
+                      _resultText.isEmpty ? "উপরে ইনপুট দিন" : _resultText,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: _resultColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 4.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF6B0000)),
+      ),
+    );
+  }
+
+  Widget _buildSubHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0, top: 4.0),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+      ),
+    );
+  }
+
+  Widget _buildFourInputBoxes({
+    required TextEditingController v,
+    required TextEditingController a,
+    required TextEditingController r,
+    required TextEditingController p,
+    bool readOnly = false,
+    Function(String)? onChanged,
+  }) {
+    return Row(
+      children: [
+        Expanded(child: _buildSingleBox("ভরি", v, readOnly, onChanged)),
+        const SizedBox(width: 6),
+        Expanded(child: _buildSingleBox("আনা", a, readOnly, onChanged)),
+        const SizedBox(width: 6),
+        Expanded(child: _buildSingleBox("রতি", r, readOnly, onChanged)),
+        const SizedBox(width: 6),
+        Expanded(child: _buildSingleBox("পয়েন্ট", p, readOnly, onChanged)),
+      ],
+    );
+  }
+
+  Widget _buildSingleBox(String label, TextEditingController controller, bool readOnly, Function(String)? onChanged) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textAlign: TextAlign.center,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 12),
+        isDense: true,
+        filled: true,
+        fillColor: readOnly ? Colors.grey.shade200 : Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       ),
     );
   }
