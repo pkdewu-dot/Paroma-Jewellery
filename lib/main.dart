@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const JewelleryApp());
 }
 
@@ -28,9 +26,9 @@ class JewelleryApp extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// হোম স্ক্রিন (সকল মেনু যুক্ত)
-// ---------------------------------------------------------------------------
+// ==========================================
+// ১. হোম স্ক্রিন (মেনু)
+// ==========================================
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -119,9 +117,9 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// ১. সাধারণ সোনা ক্যালকুলেটর (ভরি, আনা, রতি, পয়েন্ট থেকে দাম ও রূপান্তর)
-// ---------------------------------------------------------------------------
+// ==========================================
+// ২. সোনা ক্যালকুলেটর
+// ==========================================
 class GoldCalculatorScreen extends StatefulWidget {
   const GoldCalculatorScreen({super.key});
 
@@ -146,13 +144,9 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
     double roti = double.tryParse(_rotiController.text) ?? 0;
     double point = double.tryParse(_pointController.text) ?? 0;
 
-    // মোট পয়েন্ট (১ ভরি = ৯৬০ পয়েন্ট)
+    // ১ ভরি = ৯৬০ পয়েন্ট, ১ আনা = ৬০ পয়েন্ট, ১ রতি = ১০ পয়েন্ট
     double totalPoints = (vori * 960) + (ana * 60) + (roti * 10) + point;
-
-    // ১ ভরি = ১১.৬৬৪ গ্রাম (১ পয়েন্ট = ০০.০১২১৫ গ্রাম)
     double totalGram = totalPoints * (11.664 / 960);
-
-    // মোট দাম (প্রতি ভরি রেট অনুযায়ী)
     double totalPrice = (totalPoints / 960) * rate;
 
     setState(() {
@@ -232,9 +226,9 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// ২. কারিগর খতিয়ান স্ক্রিন (হাত লস ও পূর্ণাঙ্গ হিসাব সহ)
-// ---------------------------------------------------------------------------
+// ==========================================
+// ৩. কারিগর খতিয়ান স্ক্রিন
+// ==========================================
 class KarigorKhotiyanScreen extends StatefulWidget {
   const KarigorKhotiyanScreen({super.key});
 
@@ -261,7 +255,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
   final TextEditingController _bakiRoti = TextEditingController();
   final TextEditingController _bakiPoint = TextEditingController();
 
-  // ৪. কারিগরের হাত লস প্রতি ভরি
+  // ৪. কারিগরের হাত লস প্রতি ভরি (১ ভরি = ১ আনা ২ রতি = ৮০ পয়েন্ট)
   final TextEditingController _rateVori = TextEditingController(text: '0');
   final TextEditingController _rateAna = TextEditingController(text: '1');
   final TextEditingController _rateRoti = TextEditingController(text: '2');
@@ -287,77 +281,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
   String _resultText = '';
   Color _resultColor = Colors.black;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadSavedData();
-  }
-
-  // ডাটা লোকাল মেমোরিতে সেভ রাখা
-  Future<void> _saveData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('prodanVori', _prodanVori.text);
-    await prefs.setString('prodanAna', _prodanAna.text);
-    await prefs.setString('prodanRoti', _prodanRoti.text);
-    await prefs.setString('prodanPoint', _prodanPoint.text);
-
-    await prefs.setString('gohonaVori', _gohonaVori.text);
-    await prefs.setString('gohonaAna', _gohonaAna.text);
-    await prefs.setString('gohonaRoti', _gohonaRoti.text);
-    await prefs.setString('gohonaPoint', _gohonaPoint.text);
-
-    await prefs.setString('bakiVori', _bakiVori.text);
-    await prefs.setString('bakiAna', _bakiAna.text);
-    await prefs.setString('bakiRoti', _bakiRoti.text);
-    await prefs.setString('bakiPoint', _bakiPoint.text);
-
-    await prefs.setString('rateVori', _rateVori.text);
-    await prefs.setString('rateAna', _rateAna.text);
-    await prefs.setString('rateRoti', _rateRoti.text);
-    await prefs.setString('ratePoint', _ratePoint.text);
-
-    await prefs.setString('onnannoVori', _onnannoVori.text);
-    await prefs.setString('onnannoAna', _onnannoAna.text);
-    await prefs.setString('onnannoRoti', _onnannoRoti.text);
-    await prefs.setString('onnannoPoint', _onnannoPoint.text);
-  }
-
-  // পূর্বে সেভ করা ডাটা পুনরায় লোড করা
-  Future<void> _loadSavedData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _prodanVori.text = prefs.getString('prodanVori') ?? '';
-      _prodanAna.text = prefs.getString('prodanAna') ?? '';
-      _prodanRoti.text = prefs.getString('prodanRoti') ?? '';
-      _prodanPoint.text = prefs.getString('prodanPoint') ?? '';
-
-      _gohonaVori.text = prefs.getString('gohonaVori') ?? '';
-      _gohonaAna.text = prefs.getString('gohonaAna') ?? '';
-      _gohonaRoti.text = prefs.getString('gohonaRoti') ?? '';
-      _gohonaPoint.text = prefs.getString('gohonaPoint') ?? '';
-
-      _bakiVori.text = prefs.getString('bakiVori') ?? '';
-      _bakiAna.text = prefs.getString('bakiAna') ?? '';
-      _bakiRoti.text = prefs.getString('bakiRoti') ?? '';
-      _bakiPoint.text = prefs.getString('bakiPoint') ?? '';
-
-      _rateVori.text = prefs.getString('rateVori') ?? '0';
-      _rateAna.text = prefs.getString('rateAna') ?? '1';
-      _rateRoti.text = prefs.getString('rateRoti') ?? '2';
-      _ratePoint.text = prefs.getString('ratePoint') ?? '0';
-
-      _onnannoVori.text = prefs.getString('onnannoVori') ?? '';
-      _onnannoAna.text = prefs.getString('onnannoAna') ?? '';
-      _onnannoRoti.text = prefs.getString('onnannoRoti') ?? '';
-      _onnannoPoint.text = prefs.getString('onnannoPoint') ?? '';
-    });
-    _calculate();
-  }
-
-  // সব তথ্য মুছে ফেলা (রিসেট)
-  Future<void> _clearAll() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+  void _clearAll() {
     setState(() {
       _prodanVori.clear(); _prodanAna.clear(); _prodanRoti.clear(); _prodanPoint.clear();
       _gohonaVori.clear(); _gohonaAna.clear(); _gohonaRoti.clear(); _gohonaPoint.clear();
@@ -370,7 +294,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
     });
   }
 
-  // পয়েন্টে রূপান্তর (১ ভরি = ৯৬০ পয়েন্ট)
+  // ১ রতি = ১০ পয়েন্ট, ১ আনা = ৬০ পয়েন্ট, ১ ভরি = ৯৬০ পয়েন্ট
   double _convertToPoints(String v, String a, String r, String p) {
     double vori = double.tryParse(v) ?? 0;
     double ana = double.tryParse(a) ?? 0;
@@ -380,7 +304,6 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
     return (vori * 960) + (ana * 60) + (roti * 10) + point;
   }
 
-  // পয়েন্ট থেকে {ভরি, আনা, রতি, পয়েন্ট} ফরম্যাটে রূপান্তর
   Map<String, double> _convertFromPoints(double totalPoints) {
     double temp = totalPoints.abs();
 
@@ -402,7 +325,6 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
   }
 
   void _calculate() {
-    _saveData();
     setState(() {
       double prodanPoints = _convertToPoints(_prodanVori.text, _prodanAna.text, _prodanRoti.text, _prodanPoint.text);
       double gohonaPoints = _convertToPoints(_gohonaVori.text, _gohonaAna.text, _gohonaRoti.text, _gohonaPoint.text);
@@ -410,7 +332,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
       double lossRatePoints = _convertToPoints(_rateVori.text, _rateAna.text, _rateRoti.text, _ratePoint.text);
       double onnannoPoints = _convertToPoints(_onnannoVori.text, _onnannoAna.text, _onnannoRoti.text, _onnannoPoint.text);
 
-      // ঐকিক নিয়মে হাত লস = (গহনার ওজন * প্রতি ভরিতে হাত লস) / ৯৬০
+      // ঐকিক নিয়মে হাত লস হিসাব = (গহনার পয়েন্ট * প্রতি ভরি লসের পয়েন্ট) / ৯৬০
       double calculatedLossPoints = (gohonaPoints * lossRatePoints) / 960.0;
       var lossFormatted = _convertFromPoints(calculatedLossPoints);
 
@@ -419,7 +341,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
       _calculatedHatLossRoti.text = lossFormatted['roti']!.toInt().toString();
       _calculatedHatLossPoint.text = lossFormatted['point']!.toString();
 
-      // মোট প্রাপ্তি = গহনার ওজন + বাকি সোনার ওজন + হিসাবকৃত হাত লস + অন্যান্য
+      // কারিগর থেকে মোট প্রাপ্তি = গহনার ওজন + বাকি সোনার ওজন + হিসাবকৃত হাত লস + অন্যান্য
       double totalPraptiPoints = gohonaPoints + bakiPoints + calculatedLossPoints + onnannoPoints;
       var totalPraptiFormatted = _convertFromPoints(totalPraptiPoints);
 
@@ -515,7 +437,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
             ),
             const SizedBox(height: 10),
 
-            const Text("• হিসাবকৃত হাত লস (স্বয়ংক্রিয়)", style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
+            const Text("• হিসাবকৃত হাত লস (ঐকিক নিয়মে স্বয়ংক্রিয়)", style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
             _buildVoriAnaRotiRow(
               v: _calculatedHatLossVori, a: _calculatedHatLossAna, r: _calculatedHatLossRoti, p: _calculatedHatLossPoint,
               readOnly: true,
@@ -537,7 +459,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
             ),
             const SizedBox(height: 25),
 
-            // ৪. ফলাফল প্রদর্শন বক্স
+            // ৪. ফলাফল বক্স
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -548,7 +470,7 @@ class _KarigorKhotiyanScreenState extends State<KarigorKhotiyanScreen> {
               ),
               child: Column(
                 children: [
-                  const Text("চূড়ান্ত ফলাফল (প্রদান - প্রাপ্তি)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  const Text("চূড়ান্ত ফলাফল (প্রদান - মোট প্রাপ্তি)", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   Text(
                     _resultText.isEmpty ? "উপরে তথ্য ইনপুট দিন" : _resultText,
