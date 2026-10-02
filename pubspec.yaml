@@ -1,5 +1,5 @@
-name: poroma_jewellers
-description: "A new Flutter project."
+name: paroma_jewellery
+description: "Paroma Jewellery Management Application"
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -16,6 +16,13 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+
+# কাস্টম লোগো কনফিগারেশন (app_icon.jpg)
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "app_icon.jpg"
