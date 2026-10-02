@@ -2,39 +2,43 @@ name: Build Universal APK
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - uses: subosito/flutter-action@v2
+      - name: Set up Java JDK
+        uses: actions/setup-java@v3
         with:
-          flutter-version: '3.19.x'
+          distribution: 'zulu'
+          java-version: '17'
 
-      - name: Rebuild Project Structure Safely
-        run: |
-          mkdir temp_app
-          cd temp_app
-          flutter create poroma_jewellers --org com.pk.poromajewellers
-          cp -r poroma_jewellers/* ../
-          cd ..
-          rm -rf temp_app
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
 
-      - name: Restore Custom Main Code
-        run: |
-          git checkout HEAD -- lib/main.dart
-
-      - name: Install dependencies
+      - name: Get Flutter dependencies
         run: flutter pub get
+
+      # অ্যাপের লোগো তৈরি করার নির্দেশ
+      - name: Generate App Launcher Icons
+        run: flutter pub run flutter_launcher_icons
 
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Upload APK
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PoromaJewellers-APK
