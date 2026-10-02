@@ -31,10 +31,6 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # অ্যাপের লোগো তৈরি করার নির্দেশ
-      - name: Generate App Launcher Icons
-        run: flutter pub run flutter_launcher_icons
-
       - name: Build APK
         run: flutter build apk --release
 
