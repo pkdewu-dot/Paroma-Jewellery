@@ -12,16 +12,16 @@ class TodaysMarketPage extends StatefulWidget {
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool isLoading = true;
 
-  // Real-time market rates
-  double gold22k = 138000.0;
-  double gold21k = 131700.0;
-  double gold18k = 112900.0;
-  double goldTraditional = 92800.0;
-  double silver22k = 2500.0;
+  // Real-time Latest BAJUS Base Rates (Per Vori)
+  double gold22k = 230772.0;
+  double gold21k = 220391.0;
+  double gold18k = 189248.0;
+  double goldTraditional = 154606.0;
+  double silver22k = 4316.0;
 
   String selectedUnit = 'Vori';
-  double buybackPercentage = 20.0;
-  final TextEditingController percentageController = TextEditingController(text: '20');
+  double buybackPercentage = 17.0; // Standard BAJUS Deduction Rate (17%)
+  final TextEditingController percentageController = TextEditingController(text: '17');
 
   @override
   void initState() {
@@ -37,38 +37,41 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     try {
       final response = await http.get(
         Uri.parse('https://www.bajus.org/gold-price'),
-        headers: {'User-Agent': 'Mozilla/5.0'},
-      );
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
+        },
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         var document = parser.parse(response.body);
-        var rows = document.querySelectorAll('table tr');
+        var rows = document.querySelectorAll('tr');
 
         for (var row in rows) {
+          var text = row.text.toLowerCase();
           var columns = row.querySelectorAll('td');
+
           if (columns.length >= 2) {
-            String category = columns[0].text.trim().toLowerCase();
             String priceText = columns[1].text.replaceAll(RegExp(r'[^0-9.]'), '');
             double? parsedPrice = double.tryParse(priceText);
 
-            if (parsedPrice != null && parsedPrice > 0) {
-              if (category.contains('22') && category.contains('gold')) {
+            if (parsedPrice != null && parsedPrice > 50000) {
+              if (text.contains('22') && text.contains('gold')) {
                 gold22k = parsedPrice;
-              } else if (category.contains('21') && category.contains('gold')) {
+              } else if (text.contains('21') && text.contains('gold')) {
                 gold21k = parsedPrice;
-              } else if (category.contains('18') && category.contains('gold')) {
+              } else if (text.contains('18') && text.contains('gold')) {
                 gold18k = parsedPrice;
-              } else if (category.contains('traditional')) {
+              } else if (text.contains('traditional')) {
                 goldTraditional = parsedPrice;
-              } else if (category.contains('silver')) {
-                silver22k = parsedPrice;
               }
+            } else if (parsedPrice != null && parsedPrice > 1000 && text.contains('silver')) {
+              silver22k = parsedPrice;
             }
           }
         }
       }
     } catch (_) {
-      // Retains latest actual base fallback values if fetch fails
+      // Fallback maintains current valid BAJUS market prices
     } finally {
       if (mounted) {
         setState(() {
@@ -103,6 +106,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       appBar: AppBar(
         title: const Text('আজকের বাজার (Live Rates)'),
         backgroundColor: Colors.amber[800],
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
