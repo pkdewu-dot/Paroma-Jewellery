@@ -127,8 +127,9 @@ class HomeScreen extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap ?? () {
-          ScaffoldMessenger.of(context).showProactiveSnackBar
-            ?? ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('কাজ চলছে...')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('কাজ চলছে...')),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Column(
@@ -161,8 +162,8 @@ enum WeightUnit { gram, vori, ana, roti }
 
 class GoldSilverPriceItem {
   final String type;
-  final double baseSellingGram; // প্রতি গ্রামের সোনার বিক্রয় মূল্য
-  final double baseBuyingGram;  // প্রতি গ্রামের সোনার ক্রয় মূল্য (পুরাতন)
+  final double baseSellingGram;
+  final double baseBuyingGram;
 
   GoldSilverPriceItem({required this.type, required this.baseSellingGram, required this.baseBuyingGram});
 }
@@ -170,10 +171,8 @@ class GoldSilverPriceItem {
 class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   WeightUnit _selectedUnit = WeightUnit.vori;
   bool _isLoading = true;
-  String _errorMessage = '';
   String _lastUpdated = '';
 
-  // ডিফল্ট বেস ডেমো ডাটা (প্রতি গ্রাম টাকায়) - লাইভ ফেচ ব্যর্থ হলে ফলব্যাক হিসেবে কাজ করবে
   List<GoldSilverPriceItem> goldPrices = [
     GoldSilverPriceItem(type: '22 Karat Gold', baseSellingGram: 11880, baseBuyingGram: 10830),
     GoldSilverPriceItem(type: '21 Karat Gold', baseSellingGram: 11340, baseBuyingGram: 10335),
@@ -194,22 +193,17 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
     _fetchGoldrData();
   }
 
-  // goldr.org থেকে ডাটা স্ক্র্যাপ/ফেচ করার ফাংশন
   Future<void> _fetchGoldrData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = '';
     });
 
     try {
       final response = await http.get(Uri.parse('https://goldr.org/'));
       if (response.statusCode == 200) {
         var document = html_parser.parse(response.body);
-        
-        // ওয়েবসাইটের টেবিল থেকে লাইভ রেট স্ক্র্যাপ করার চেষ্টা
         var tables = document.querySelectorAll('table');
         if (tables.isNotEmpty) {
-          // ফেচ সফল হলে স্টেট আপডেট
           setState(() {
             _lastUpdated = 'লাইভ আপডেট সম্পন্ন';
             _isLoading = false;
@@ -229,17 +223,16 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
     }
   }
 
-  // গ্রাম থেকে নির্বাচিত এককে রূপান্তর গুণক
   double _getUnitMultiplier() {
     switch (_selectedUnit) {
       case WeightUnit.gram:
         return 1.0;
       case WeightUnit.vori:
-        return 11.6638; // ১ ভোলি = ১১.৬৬৩৮ গ্রাম
+        return 11.6638;
       case WeightUnit.ana:
-        return 11.6638 / 16; // ১ আনা
+        return 11.6638 / 16;
       case WeightUnit.roti:
-        return 11.6638 / 96; // ১ রতি
+        return 11.6638 / 96;
     }
   }
 
@@ -275,7 +268,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ইউনিট সিলেকশন ফিল্টার বাটন (Gram, Vori, Ana, Roti)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -296,7 +288,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 12),
 
-                  // সোনার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} স্বর্ণের দাম gold price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
@@ -307,7 +298,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 20),
 
-                  // রূপার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} চান্দি / রূপার দাম silver price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
@@ -371,7 +361,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
               2: FlexColumnWidth(1.1),
             },
             children: [
-              // টেবিল হেডার
               TableRow(
                 decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
                 children: [
@@ -380,7 +369,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
                   _buildTableCell('পুরাতন বিক্রয় মূল্য (${_getUnitName()})', isHeader: true),
                 ],
               ),
-              // ডাটা রো (Rows)
               ...prices.map((item) {
                 int selling = (item.baseSellingGram * multiplier).round();
                 int buying = (item.baseBuyingGram * multiplier).round();
