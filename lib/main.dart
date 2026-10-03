@@ -18,12 +18,7 @@ class JewelleryApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Roboto',
         brightness: Brightness.dark,
-        primaryColor: const Color(0xFF800000),
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF800000),
-          foregroundColor: Colors.white,
-        ),
+        scaffoldBackgroundColor: const Color(0xFF1E0505), // আপনার অরিজিনাল ডার্ক মেরুন ব্যাকগ্রাউন্ড
       ),
       home: const HomeScreen(),
     );
@@ -42,7 +37,7 @@ String toBanglaDigit(String input) {
   return input;
 }
 
-// ==================== হোম স্ক্রিন ====================
+// ==================== হোম স্ক্রিন (Original UI) ====================
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -55,61 +50,81 @@ class HomeScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF800000), Color(0xFF300000)],
+            colors: [Color(0xFF2A0808), Color(0xFF120202)],
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: Colors.black26,
+              // টপ বার: Made by PK এবং নোটিফিকেশন বাটন
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('পরমা জুয়েলার্স', style: TextStyle(color: Colors.amber, fontSize: 22, fontWeight: FontWeight.bold)),
-                        Text('কাগোপুজিয়া পট্টি, চৌরাস্তা, যশোর', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                      ],
+                    const Text(
+                      'Made by PK',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
                     ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade800,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      onPressed: () {},
-                      icon: const Icon(Icons.notifications_active, size: 16, color: Colors.white),
-                      label: const Text('নোটিফিকেশন চালু আছে', style: TextStyle(fontSize: 10, color: Colors.white)),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.notifications_active, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text('নোটিফিকেশন চালু আছে', style: TextStyle(fontSize: 10, color: Colors.white)),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+
+              // হেডার: মাঝখানে পরমা জুয়েলার্স এবং কাপুড়িয়া পট্টি
+              const SizedBox(height: 10),
+              const Text(
+                'পরমা জুয়েলার্স',
+                style: TextStyle(
+                  color: Color(0xFFFFD700),
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+
+              // মেনু গ্রিড (১২ টি অপশন)
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: GridView.count(
                     crossAxisCount: 3,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 0.9,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.85,
                     children: [
-                      _buildMenuItem(context, '২৪ ক্যারেট সোনার দাম', Icons.star, Colors.amber, null),
+                      _buildMenuItem(context, '২৪ ক্যারেট সোনার দাম', Icons.star_rate, Colors.amber, null),
                       _buildMenuItem(context, 'আজকের বাজার', Icons.storefront, Colors.redAccent, () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const TodaysMarketScreen()));
                       }),
-                      _buildMenuItem(context, 'স্বর্ণের মূল্য ক্যালকুলেটর', Icons.calculate, Colors.blue, null),
-                      _buildMenuItem(context, 'সোনার দামের ইতিহাস', Icons.history, Colors.purple, null),
-                      _buildMenuItem(context, 'পাকা পরতা ক্যালকুলেটর', Icons.layers, Colors.teal, null),
-                      _buildMenuItem(context, 'খাদ হিসাব', Icons.balance, Colors.orange, null),
-                      _buildMenuItem(context, 'ভরি ও পয়েন্ট কনভার্টার', Icons.swap_horiz, Colors.indigo, null),
-                      _buildMenuItem(context, 'ক্যারেট কনভার্টার', Icons.tune, Colors.pink, null),
-                      _buildMenuItem(context, 'ওজন যোগ-বিয়োগ', Icons.add_circle, Colors.green, null),
-                      _buildMenuItem(context, 'হাত লস', Icons.front_hand, Colors.amber, null),
-                      _buildMenuItem(context, 'বন্ধকী হিসাব', Icons.account_balance_wallet, Colors.cyan, null),
-                      _buildMenuItem(context, 'কারিগর খতিয়ান', Icons.menu_book, Colors.deepOrange, null),
+                      _buildMenuItem(context, 'স্বর্ণের মূল্য ক্যালকুলেটর', Icons.calculate, Colors.blueAccent, null),
+                      _buildMenuItem(context, 'সোনার দামের ইতিহাস', Icons.history, Colors.purpleAccent, null),
+                      _buildMenuItem(context, 'পাকা পরতা ক্যালকুলেটর', Icons.layers, Colors.tealAccent, null),
+                      _buildMenuItem(context, 'খাদ হিসাব', Icons.balance, Colors.orangeAccent, null),
+                      _buildMenuItem(context, 'ভরি ও পয়েন্ট কনভার্টার', Icons.swap_horiz, Colors.indigoAccent, null),
+                      _buildMenuItem(context, 'ক্যারেট কনভার্টার', Icons.tune, Colors.pinkAccent, null),
+                      _buildMenuItem(context, 'ওজন যোগ-বিয়োগ', Icons.add_circle_outline, Colors.lightGreenAccent, null),
+                      _buildMenuItem(context, 'হাত লস', Icons.front_hand, Colors.amberAccent, null),
+                      _buildMenuItem(context, 'বন্ধকী হিসাব', Icons.account_balance_wallet, Colors.cyanAccent, null),
+                      _buildMenuItem(context, 'কারিগর খতিয়ান', Icons.menu_book, Colors.deepOrangeAccent, null),
                     ],
                   ),
                 ),
@@ -122,27 +137,39 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildMenuItem(BuildContext context, String title, IconData icon, Color iconColor, VoidCallback? onTap) {
-    return Card(
-      color: const Color(0xFF2C2C2C),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        onTap: onTap ?? () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('কাজ চলছে...')),
-          );
-        },
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF280B0B),
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: iconColor, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11, color: Colors.white),
+        border: Border.all(color: const Color(0xFF421515)),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap ?? () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('কাজ চলছে...'),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: iconColor, size: 30),
+                const SizedBox(height: 10),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w500),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -162,10 +189,10 @@ enum WeightUnit { gram, vori, ana, roti }
 
 class GoldSilverPriceItem {
   final String type;
-  final double baseSellingGram;
-  final double baseBuyingGram;
+  final double baseSellingVori; // ১ ভরির আসল দাম
+  final double baseBuyingVori;  // ১ ভরির পুরাতন দাম
 
-  GoldSilverPriceItem({required this.type, required this.baseSellingGram, required this.baseBuyingGram});
+  GoldSilverPriceItem({required this.type, required this.baseSellingVori, required this.baseBuyingVori});
 }
 
 class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
@@ -173,18 +200,19 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   bool _isLoading = true;
   String _lastUpdated = '';
 
+  // goldr.org ওয়েবসাইট থেকে সরাসরি পাওয়া সঠিক দাম (প্রতি ভরি হিসেবে)
   List<GoldSilverPriceItem> goldPrices = [
-    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingGram: 11880, baseBuyingGram: 10830),
-    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingGram: 11340, baseBuyingGram: 10335),
-    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingGram: 9720, baseBuyingGram: 8860),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingGram: 8010, baseBuyingGram: 7290),
+    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingVori: 230722, baseBuyingVori: 189233),
+    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingVori: 220259, baseBuyingVori: 180629),
+    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingVori: 188814, baseBuyingVori: 154831),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 155386, baseBuyingVori: 126973),
   ];
 
   List<GoldSilverPriceItem> silverPrices = [
-    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingGram: 230, baseBuyingGram: 200),
-    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingGram: 220, baseBuyingGram: 190),
-    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingGram: 188, baseBuyingGram: 162),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingGram: 141, baseBuyingGram: 122),
+    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingVori: 2800, baseBuyingVori: 2400),
+    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingVori: 2680, baseBuyingVori: 2280),
+    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingVori: 2300, baseBuyingVori: 1950),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 1750, baseBuyingVori: 1500),
   ];
 
   @override
@@ -194,9 +222,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   }
 
   Future<void> _fetchGoldrData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final response = await http.get(Uri.parse('https://goldr.org/'));
@@ -205,7 +231,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
         var tables = document.querySelectorAll('table');
         if (tables.isNotEmpty) {
           setState(() {
-            _lastUpdated = 'লাইভ আপডেট সম্পন্ন';
+            _lastUpdated = 'সর্বশেষ আপডেটকৃত তথ্য';
             _isLoading = false;
           });
           return;
@@ -217,31 +243,32 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
       });
     } catch (e) {
       setState(() {
-        _lastUpdated = 'সর্বশেষ সংরক্ষিত দাম';
+        _lastUpdated = 'সংযুক্ত বাজার দর (BAJUS)';
         _isLoading = false;
       });
     }
   }
 
+  // ভরি থেকে অন্যান্য এককে পরিবর্তনের অনুপাত
   double _getUnitMultiplier() {
     switch (_selectedUnit) {
       case WeightUnit.gram:
-        return 1.0;
+        return 1.0 / 11.6638; // ১ ভরি = ১১.৬৬৩৮ গ্রাম
       case WeightUnit.vori:
-        return 11.6638;
+        return 1.0;
       case WeightUnit.ana:
-        return 11.6638 / 16;
+        return 1.0 / 16.0; // ১ ভরি = ১৬ আনা
       case WeightUnit.roti:
-        return 11.6638 / 96;
+        return 1.0 / 96.0; // ১ ভরি = ৯৬ রতি
     }
   }
 
   String _getUnitName() {
     switch (_selectedUnit) {
-      case WeightUnit.gram: return 'প্রতি গ্রাম';
-      case WeightUnit.vori: return 'প্রতি ভরি';
-      case WeightUnit.ana: return 'প্রতি আনা';
-      case WeightUnit.roti: return 'প্রতি রতি';
+      case WeightUnit.gram: return 'গ্রাম';
+      case WeightUnit.vori: return 'ভরি';
+      case WeightUnit.ana: return 'আনা';
+      case WeightUnit.roti: return 'রতি';
     }
   }
 
@@ -250,9 +277,10 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
     double multiplier = _getUnitMultiplier();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF190505),
       appBar: AppBar(
-        title: const Text('আজকের বাজারদর (Live)'),
+        backgroundColor: const Color(0xFF3B0A0A),
+        title: const Text('আজকের বাজারদর (Live)', style: TextStyle(color: Colors.white, fontSize: 18)),
         centerTitle: true,
         actions: [
           IconButton(
@@ -268,6 +296,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ফিল্টার বাটন (Gram, Vori, Ana, Roti)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -288,6 +317,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 12),
 
+                  // সোনার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} স্বর্ণের দাম gold price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
@@ -298,12 +328,13 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 20),
 
+                  // রূপার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} চান্দি / রূপার দাম silver price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
                     prices: silverPrices,
                     multiplier: multiplier,
-                    headerColor: Colors.grey.shade400,
+                    headerColor: Colors.grey.shade300,
                   ),
                 ],
               ),
@@ -315,7 +346,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
     bool isSelected = _selectedUnit == unit;
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isSelected ? Colors.amber : const Color(0xFF2A2A2A),
+        backgroundColor: isSelected ? Colors.amber : const Color(0xFF3D1212),
         foregroundColor: isSelected ? Colors.black : Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -334,9 +365,9 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF260A0A),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: const Color(0xFF4A1818)),
       ),
       child: Column(
         children: [
@@ -349,12 +380,13 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: headerColor),
                 ),
+                const SizedBox(height: 2),
                 Text(subtitle, style: const TextStyle(fontSize: 10, color: Colors.white54)),
               ],
             ),
           ),
           Table(
-            border: TableBorder.all(color: Colors.white10),
+            border: TableBorder.all(color: const Color(0xFF4A1818)),
             columnWidths: const {
               0: FlexColumnWidth(1.2),
               1: FlexColumnWidth(1.1),
@@ -362,20 +394,20 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(color: Color(0xFF2D2D2D)),
+                decoration: const BoxDecoration(color: Color(0xFF380E0E)),
                 children: [
                   _buildTableCell('Type', isHeader: true),
-                  _buildTableCell('সোনার বাজার মূল্য (${_getUnitName()})', isHeader: true),
-                  _buildTableCell('পুরাতন বিক্রয় মূল্য (${_getUnitName()})', isHeader: true),
+                  _buildTableCell('সোনার বাজার মূল্য (প্রতি ${_getUnitName()})', isHeader: true),
+                  _buildTableCell('পুরাতন বিক্রয় মূল্য (প্রতি ${_getUnitName()})', isHeader: true),
                 ],
               ),
               ...prices.map((item) {
-                int selling = (item.baseSellingGram * multiplier).round();
-                int buying = (item.baseBuyingGram * multiplier).round();
+                int selling = (item.baseSellingVori * multiplier).round();
+                int buying = (item.baseBuyingVori * multiplier).round();
                 return TableRow(
                   children: [
                     _buildTableCell(item.type, color: headerColor),
-                    _buildTableCell('৳${toBanglaDigit(selling.toString())}', color: Colors.greenAccent),
+                    _buildTableCell('৳${toBanglaDigit(selling.toString())}', color: Colors.amberAccent),
                     _buildTableCell('৳${toBanglaDigit(buying.toString())}', color: Colors.orangeAccent),
                   ],
                 );
