@@ -29,7 +29,7 @@ jobs:
       - name: Re-create Android Folder Dynamically
         run: |
           rm -rf android
-          flutter create . --platforms=android
+          flutter create . --platforms=android --project-name paroma_jewellery
 
       - name: Get Flutter dependencies
         run: flutter pub get
