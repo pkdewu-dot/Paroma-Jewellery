@@ -26,6 +26,11 @@ jobs:
           flutter-version: '3.19.6'
           channel: 'stable'
 
+      - name: Re-create Android Folder Dynamically
+        run: |
+          rm -rf android
+          flutter create . --platforms=android
+
       - name: Get Flutter dependencies
         run: flutter pub get
 
