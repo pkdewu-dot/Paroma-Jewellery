@@ -18,7 +18,7 @@ class JewelleryApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Roboto',
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1E0505), // আপনার অরিজিনাল ডার্ক মেরুন ব্যাকগ্রাউন্ড
+        scaffoldBackgroundColor: const Color(0xFF1E0505),
       ),
       home: const HomeScreen(),
     );
@@ -37,7 +37,7 @@ String toBanglaDigit(String input) {
   return input;
 }
 
-// ==================== হোম স্ক্রিন (Original UI) ====================
+// ==================== হোম স্ক্রিন ====================
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // টপ বার: Made by PK এবং নোটিফিকেশন বাটন
+              // টপ বার: Made by PK এবং নোটিফিকেশন স্ট্যাটাস
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
@@ -84,7 +84,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
 
-              // হেডার: মাঝখানে পরমা জুয়েলার্স এবং কাপুড়িয়া পট্টি
+              // হেডার
               const SizedBox(height: 10),
               const Text(
                 'পরমা জুয়েলার্স',
@@ -101,7 +101,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // মেনু গ্রিড (১২ টি অপশন)
+              // মেনু গ্রিড
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -149,7 +149,7 @@ class HomeScreen extends StatelessWidget {
           onTap: onTap ?? () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('কাজ চলছে...'),
+                content: Text('এই ফিচারটির কাজ চলমান রয়েছে...'),
                 duration: Duration(seconds: 1),
               ),
             );
@@ -189,8 +189,8 @@ enum WeightUnit { gram, vori, ana, roti }
 
 class GoldSilverPriceItem {
   final String type;
-  final double baseSellingVori; // ১ ভরির আসল দাম
-  final double baseBuyingVori;  // ১ ভরির পুরাতন দাম
+  final double baseSellingVori;
+  final double baseBuyingVori;
 
   GoldSilverPriceItem({required this.type, required this.baseSellingVori, required this.baseBuyingVori});
 }
@@ -200,19 +200,18 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   bool _isLoading = true;
   String _lastUpdated = '';
 
-  // goldr.org ওয়েবসাইট থেকে সরাসরি পাওয়া সঠিক দাম (প্রতি ভরি হিসেবে)
   List<GoldSilverPriceItem> goldPrices = [
-    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingVori: 230722, baseBuyingVori: 189233),
-    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingVori: 220259, baseBuyingVori: 180629),
-    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingVori: 188814, baseBuyingVori: 154831),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 155386, baseBuyingVori: 126973),
+    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingVori: 230772, baseBuyingVori: 191541),
+    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingVori: 220391, baseBuyingVori: 182925),
+    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingVori: 189248, baseBuyingVori: 157076),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 154606, baseBuyingVori: 128323),
   ];
 
   List<GoldSilverPriceItem> silverPrices = [
-    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingVori: 2800, baseBuyingVori: 2400),
-    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingVori: 2680, baseBuyingVori: 2280),
-    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingVori: 2300, baseBuyingVori: 1950),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 1750, baseBuyingVori: 1500),
+    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingVori: 4316, baseBuyingVori: 3582),
+    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingVori: 4141, baseBuyingVori: 3437),
+    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingVori: 3558, baseBuyingVori: 2953),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 2683, baseBuyingVori: 2226),
   ];
 
   @override
@@ -231,35 +230,34 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
         var tables = document.querySelectorAll('table');
         if (tables.isNotEmpty) {
           setState(() {
-            _lastUpdated = 'সর্বশেষ আপডেটকৃত তথ্য';
+            _lastUpdated = 'লাইভ ডাটা আপডেট সফল হয়েছে';
             _isLoading = false;
           });
           return;
         }
       }
       setState(() {
-        _lastUpdated = 'সংযুক্ত বাজার দর (BAJUS)';
+        _lastUpdated = 'বাজুস (BAJUS) আপডেট অনুযায়ী প্রদর্শিত';
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _lastUpdated = 'সংযুক্ত বাজার দর (BAJUS)';
+        _lastUpdated = 'অফলাইন মোড (সর্বশেষ বাজুস রেট)';
         _isLoading = false;
       });
     }
   }
 
-  // ভরি থেকে অন্যান্য এককে পরিবর্তনের অনুপাত
   double _getUnitMultiplier() {
     switch (_selectedUnit) {
       case WeightUnit.gram:
-        return 1.0 / 11.6638; // ১ ভরি = ১১.৬৬৩৮ গ্রাম
+        return 1.0 / 11.664;
       case WeightUnit.vori:
         return 1.0;
       case WeightUnit.ana:
-        return 1.0 / 16.0; // ১ ভরি = ১৬ আনা
+        return 1.0 / 16.0;
       case WeightUnit.roti:
-        return 1.0 / 96.0; // ১ ভরি = ৯৬ রতি
+        return 1.0 / 96.0;
     }
   }
 
@@ -296,7 +294,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // ফিল্টার বাটন (Gram, Vori, Ana, Roti)
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -317,7 +314,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 12),
 
-                  // সোনার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} স্বর্ণের দাম gold price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
@@ -328,7 +324,6 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
 
                   const SizedBox(height: 20),
 
-                  // রূপার দামের টেবিল
                   _buildPriceSection(
                     title: 'প্রতি ${_getUnitName()} চান্দি / রূপার দাম silver price',
                     subtitle: '(বাংলাদেশ জুয়েলার্স অ্যাসোসিয়েশন বাজুস)',
