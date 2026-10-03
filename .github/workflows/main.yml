@@ -30,6 +30,11 @@ jobs:
           rm -rf android
           flutter create . --platforms=android
 
+      - name: Generate App Launcher Icons
+        run: |
+          flutter pub get
+          flutter pub run flutter_launcher_icons
+
       - name: Build APK
         run: flutter build apk --release
 
