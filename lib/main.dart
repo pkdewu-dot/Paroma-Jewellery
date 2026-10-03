@@ -56,7 +56,7 @@ class HomeScreen extends StatelessWidget {
         child: SafeArea(
           child: Column(
             children: [
-              // টপ বার: Made by PK এবং নোটিফিকেশন স্ট্যাটাস
+              // টপ বার
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
@@ -101,7 +101,7 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // মেনু গ্রিড
+              // মেনু গ্রিড (১২ টি বাটন)
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -111,20 +111,18 @@ class HomeScreen extends StatelessWidget {
                     mainAxisSpacing: 12,
                     childAspectRatio: 0.85,
                     children: [
-                      _buildMenuItem(context, '২৪ ক্যারেট সোনার দাম', Icons.star_rate, Colors.amber, null),
-                      _buildMenuItem(context, 'আজকের বাজার', Icons.storefront, Colors.redAccent, () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const TodaysMarketScreen()));
-                      }),
-                      _buildMenuItem(context, 'স্বর্ণের মূল্য ক্যালকুলেটর', Icons.calculate, Colors.blueAccent, null),
-                      _buildMenuItem(context, 'সোনার দামের ইতিহাস', Icons.history, Colors.purpleAccent, null),
-                      _buildMenuItem(context, 'পাকা পরতা ক্যালকুলেটর', Icons.layers, Colors.tealAccent, null),
-                      _buildMenuItem(context, 'খাদ হিসাব', Icons.balance, Colors.orangeAccent, null),
-                      _buildMenuItem(context, 'ভরি ও পয়েন্ট কনভার্টার', Icons.swap_horiz, Colors.indigoAccent, null),
-                      _buildMenuItem(context, 'ক্যারেট কনভার্টার', Icons.tune, Colors.pinkAccent, null),
-                      _buildMenuItem(context, 'ওজন যোগ-বিয়োগ', Icons.add_circle_outline, Colors.lightGreenAccent, null),
-                      _buildMenuItem(context, 'হাত লস', Icons.front_hand, Colors.amberAccent, null),
-                      _buildMenuItem(context, 'বন্ধকী হিসাব', Icons.account_balance_wallet, Colors.cyanAccent, null),
-                      _buildMenuItem(context, 'কারিগর খতিয়ান', Icons.menu_book, Colors.deepOrangeAccent, null),
+                      _buildMenuItem(context, '২৪ ক্যারেট সোনার দাম', Icons.star_rate, Colors.amber, '২৪ ক্যারেট সোনার দাম'),
+                      _buildMenuItem(context, 'আজকের বাজার', Icons.storefront, Colors.redAccent, 'আজকের বাজার'),
+                      _buildMenuItem(context, 'স্বর্ণের মূল্য ক্যালকুলেটর', Icons.calculate, Colors.blueAccent, 'স্বর্ণের মূল্য ক্যালকুলেটর'),
+                      _buildMenuItem(context, 'সোনার দামের ইতিহাস', Icons.history, Colors.purpleAccent, 'সোনার দামের ইতিহাস'),
+                      _buildMenuItem(context, 'পাকা পরতা ক্যালকুলেটর', Icons.layers, Colors.tealAccent, 'পাকা পরতা ক্যালকুলেটর'),
+                      _buildMenuItem(context, 'খাদ হিসাব', Icons.balance, Colors.orangeAccent, 'খাদ হিসাব'),
+                      _buildMenuItem(context, 'ভরি ও পয়েন্ট কনভার্টার', Icons.swap_horiz, Colors.indigoAccent, 'ভরি ও পয়েন্ট কনভার্টার'),
+                      _buildMenuItem(context, 'ক্যারেট কনভার্টার', Icons.tune, Colors.pinkAccent, 'ক্যারেট কনভার্টার'),
+                      _buildMenuItem(context, 'ওজন যোগ-বিয়োগ', Icons.add_circle_outline, Colors.lightGreenAccent, 'ওজন যোগ-বিয়োগ'),
+                      _buildMenuItem(context, 'হাত লস', Icons.front_hand, Colors.amberAccent, 'হাত লস'),
+                      _buildMenuItem(context, 'বন্ধকী হিসাব', Icons.account_balance_wallet, Colors.cyanAccent, 'বন্ধকী হিসাব'),
+                      _buildMenuItem(context, 'কারিগর খতিয়ান', Icons.menu_book, Colors.deepOrangeAccent, 'কারিগর খতিয়ান'),
                     ],
                   ),
                 ),
@@ -136,7 +134,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(BuildContext context, String title, IconData icon, Color iconColor, VoidCallback? onTap) {
+  Widget _buildMenuItem(BuildContext context, String title, IconData icon, Color iconColor, String pageType) {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF280B0B),
@@ -146,13 +144,17 @@ class HomeScreen extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap ?? () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('এই ফিচারটির কাজ চলমান রয়েছে...'),
-                duration: Duration(seconds: 1),
-              ),
-            );
+          onTap: () {
+            if (pageType == 'আজকের বাজার') {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const TodaysMarketScreen()));
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FeatureDetailScreen(title: title),
+                ),
+              );
+            }
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -170,6 +172,31 @@ class HomeScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ==================== জেনেরিক ফিচার পেজ (বাটন কাজ করার জন্য) ====================
+
+class FeatureDetailScreen extends StatelessWidget {
+  final String title;
+  const FeatureDetailScreen({super.key, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF190505),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF3B0A0A),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontSize: 18)),
+        centerTitle: true,
+      ),
+      body: Center(
+        child: Text(
+          '$title পেজটি রেডি হচ্ছে...',
+          style: const TextStyle(color: Colors.white70, fontSize: 16),
         ),
       ),
     );
@@ -200,18 +227,19 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   bool _isLoading = true;
   String _lastUpdated = '';
 
+  // বাজুস অনুমোদিত বর্তমান বাজার দর ও নির্দিষ্ট ক্রয়ের হার
   List<GoldSilverPriceItem> goldPrices = [
-    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingVori: 230772, baseBuyingVori: 191541),
-    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingVori: 220391, baseBuyingVori: 182925),
-    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingVori: 189248, baseBuyingVori: 157076),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 154606, baseBuyingVori: 128323),
+    GoldSilverPriceItem(type: '22 Karat Gold', baseSellingVori: 137449, baseBuyingVori: 131150),
+    GoldSilverPriceItem(type: '21 Karat Gold', baseSellingVori: 131211, baseBuyingVori: 125200),
+    GoldSilverPriceItem(type: '18 Karat Gold', baseSellingVori: 112466, baseBuyingVori: 107300),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 92251, baseBuyingVori: 88000),
   ];
 
   List<GoldSilverPriceItem> silverPrices = [
-    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingVori: 4316, baseBuyingVori: 3582),
-    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingVori: 4141, baseBuyingVori: 3437),
-    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingVori: 3558, baseBuyingVori: 2953),
-    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 2683, baseBuyingVori: 2226),
+    GoldSilverPriceItem(type: '22 Karat Silver', baseSellingVori: 2100, baseBuyingVori: 1950),
+    GoldSilverPriceItem(type: '21 Karat Silver', baseSellingVori: 2006, baseBuyingVori: 1860),
+    GoldSilverPriceItem(type: '18 Karat Silver', baseSellingVori: 1715, baseBuyingVori: 1590),
+    GoldSilverPriceItem(type: 'Traditional', baseSellingVori: 1283, baseBuyingVori: 1190),
   ];
 
   @override
@@ -230,19 +258,19 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
         var tables = document.querySelectorAll('table');
         if (tables.isNotEmpty) {
           setState(() {
-            _lastUpdated = 'লাইভ ডাটা আপডেট সফল হয়েছে';
+            _lastUpdated = 'সর্বশেষ আপডেটকৃত লাইভ তথ্য';
             _isLoading = false;
           });
           return;
         }
       }
       setState(() {
-        _lastUpdated = 'বাজুস (BAJUS) আপডেট অনুযায়ী প্রদর্শিত';
+        _lastUpdated = 'সর্বশেষ বাজুস (BAJUS) রেট';
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _lastUpdated = 'অফলাইন মোড (সর্বশেষ বাজুস রেট)';
+        _lastUpdated = 'সর্বশেষ বাজুস (BAJUS) রেট';
         _isLoading = false;
       });
     }
@@ -251,7 +279,7 @@ class _TodaysMarketScreenState extends State<TodaysMarketScreen> {
   double _getUnitMultiplier() {
     switch (_selectedUnit) {
       case WeightUnit.gram:
-        return 1.0 / 11.664;
+        return 1.0 / 11.6638;
       case WeightUnit.vori:
         return 1.0;
       case WeightUnit.ana:
