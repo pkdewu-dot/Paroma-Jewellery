@@ -82,7 +82,7 @@ class HomeScreen extends StatelessWidget {
               // অ্যাপ বার / নোটিফিকেশন বার
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: Colors.white.withValues(alpha: 0.15),
+                color: Colors.white.withOpacity(0.15),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -196,7 +196,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: color.withValues(alpha: 0.15),
+              backgroundColor: color.withOpacity(0.15),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 10),
@@ -417,7 +417,6 @@ class WeightAddSubtractScreen extends StatefulWidget {
 }
 
 class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
-  // হিসাবের স্টেট লজিক
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -426,7 +425,7 @@ class _WeightAddSubtractScreenState extends State<WeightAddSubtractScreen> {
         child: Text('ওজন যোগ/বিয়োগ ক্যালকুলেটর চালু আছে', style: TextStyle(fontSize: 16)),
       ),
     );
-    }
+  }
 }
 
 // ==================== ৪. বন্ধকী হিসাব স্ক্রিন ====================
