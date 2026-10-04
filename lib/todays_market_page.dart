@@ -21,21 +21,15 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     'গ্রাম': 11.664,
   };
 
-  static const Map<String, String> _unitKeys = {
-    'ভরি': 'vori',
-    'আনা': 'ana',
-    'রতি': 'rati',
-    'পয়েন্ট': 'point',
-    'গ্রাম': 'gram',
-  };
-
   static const List<String> _goldCarats = ['22', '21', '18'];
   static const List<String> _silverCarats = ['22', '21', '18'];
 
+  // পুরাতন সোনার default deduction = ২০%
   final TextEditingController _deductionController =
-      TextEditingController(text: '18');
+      TextEditingController(text: '20');
 
   String _selectedUnit = 'ভরি';
+
   bool _isLoading = true;
   String? _errorMessage;
   DateTime? _lastUpdated;
@@ -64,14 +58,19 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse(_sourceUrl),
-        headers: const {
-          'User-Agent': 'Mozilla/5.0 (Android) AppleWebKit/537.36 '
-              '(KHTML, like Gecko) Chrome/154.0 Mobile Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml',
-        },
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .get(
+            Uri.parse(_sourceUrl),
+            headers: const {
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/154.0 Mobile Safari/537.36',
+              'Accept':
+                  'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'bn-BD,bn;q=0.9,en-US;q=0.8,en;q=0.7',
+            },
+          )
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode != 200) {
         throw Exception('Server status: ${response.statusCode}');
@@ -82,41 +81,75 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       final gold = <String, double>{};
       final silver = <String, double>{};
 
-      // GoldR-এ একাধিক unit-এর table আছে। আমরা শুধু "প্রতি ভরি"
-      // table থেকে base rate নিই এবং App-এর নিজস্ব conversion করি।
+      /*
+       * GoldR-এর বর্তমান page structure:
+       *
+       * প্রতি ভরি স্বর্ণের দাম
+       * 22 Karat Gold
+       * 21 Karat Gold
+       * 18 Karat Gold
+       *
+       * আমরা শুধু প্রথম/main price column থেকে rate নিচ্ছি।
+       *
+       * GoldR-এর "পুরাতন বিক্রয় মূল্য" column ব্যবহার করছি না।
+       */
+
       for (final table in document.querySelectorAll('table')) {
-        final tableText = table.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+        final tableText = _cleanText(table.text);
+
         final rows = table.querySelectorAll('tr');
+
         if (rows.isEmpty) continue;
 
+        // Gold প্রতি ভরি table শনাক্ত
         final isGoldVoriTable =
-            tableText.contains('সোনার বাজার মূল্য (প্রতি ভরি)') &&
-            tableText.contains('পুরাতন বিক্রয় মূল্য (প্রতি ভরি)');
+            tableText.contains('সোনার বাজার মূল্য') &&
+            tableText.contains('প্রতি ভরি');
 
+        // Silver প্রতি ভরি table শনাক্ত
         final isSilverVoriTable =
-            tableText.contains('রুপার দাম (প্রতি ভরি)') ||
-            tableText.contains('রূপার দাম (প্রতি ভরি)');
+            (tableText.contains('রুপার দাম') ||
+                tableText.contains('রূপার দাম') ||
+                tableText.contains('চান্দি')) &&
+            tableText.contains('প্রতি ভরি');
 
-        if (!isGoldVoriTable && !isSilverVoriTable) continue;
+        if (!isGoldVoriTable && !isSilverVoriTable) {
+          continue;
+        }
 
         for (final row in rows) {
           final cells = row.querySelectorAll('th,td');
+
           if (cells.length < 2) continue;
 
-          final label = cells.first.text
-              .replaceAll(RegExp(r'\s+'), ' ')
-              .trim();
+          final label = _cleanText(cells.first.text);
+          final normalizedLabel = label.toLowerCase();
 
-          final match = RegExp(r'(22|21|18)\s*Kar[a-zA-Z]*\s*(?:Gold|Silver)')
-              .firstMatch(label);
+          String? carat;
 
-          if (match == null) continue;
+          if (normalizedLabel.contains('22')) {
+            carat = '22';
+          } else if (normalizedLabel.contains('21')) {
+            carat = '21';
+          } else if (normalizedLabel.contains('18')) {
+            carat = '18';
+          }
 
-          final carat = match.group(1)!;
+          if (carat == null) continue;
+
+          /*
+           * cells[1] = GoldR-এর মূল rate
+           *
+           * উদাহরণ:
+           * ৳২৩০,৭৭২$1,872.92
+           *
+           * আমরা প্রথম টাকা/সংখ্যাটি নেব।
+           */
           final value = _firstTakaNumber(cells[1].text);
+
           if (value == null) continue;
 
-          if (isGoldVoriTable && cells.length >= 3) {
+          if (isGoldVoriTable) {
             gold[carat] = value;
           } else if (isSilverVoriTable) {
             silver[carat] = value;
@@ -124,16 +157,25 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         }
       }
 
-      // Fallback: row text may be localized/structured differently.
+      /*
+       * যদি table structure সামান্য পরিবর্তন হয়,
+       * তাহলে fallback parser ব্যবহার হবে।
+       */
       if (gold.length < 3 || silver.length < 3) {
         _parseRowsFallback(document, gold, silver);
       }
 
       if (!mounted) return;
 
-      if (gold.length < 3 || silver.length < 3) {
+      if (gold.length < 3) {
         throw Exception(
-          'GoldR-এর প্রতি ভরি 22K/21K/18K rate সম্পূর্ণ পাওয়া যায়নি।',
+          'GoldR থেকে 22K, 21K এবং 18K main gold rate সম্পূর্ণ পাওয়া যায়নি।',
+        );
+      }
+
+      if (silver.length < 3) {
+        throw Exception(
+          'GoldR থেকে 22K, 21K এবং 18K silver rate সম্পূর্ণ পাওয়া যায়নি।',
         );
       }
 
@@ -141,14 +183,17 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         _goldPerVori
           ..clear()
           ..addAll(gold);
+
         _silverPerVori
           ..clear()
           ..addAll(silver);
+
         _lastUpdated = DateTime.now();
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _isLoading = false;
         _errorMessage =
@@ -164,63 +209,116 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   ) {
     for (final row in document.querySelectorAll('tr')) {
       final cells = row.querySelectorAll('th,td');
+
       if (cells.length < 2) continue;
 
-      final label = cells.first.text.replaceAll(RegExp(r'\s+'), ' ').trim();
-      final normalized = label.toLowerCase();
+      final label = _cleanText(cells.first.text);
+      final normalizedLabel = label.toLowerCase();
 
-      final caratMatch = RegExp(r'(22|21|18)').firstMatch(normalized);
-      if (caratMatch == null) continue;
+      String? carat;
 
-      final carat = caratMatch.group(1)!;
+      if (normalizedLabel.contains('22')) {
+        carat = '22';
+      } else if (normalizedLabel.contains('21')) {
+        carat = '21';
+      } else if (normalizedLabel.contains('18')) {
+        carat = '18';
+      }
+
+      if (carat == null) continue;
+
       final value = _firstTakaNumber(cells[1].text);
+
       if (value == null) continue;
 
-      if (normalized.contains('gold') && cells.length >= 3) {
-        // Fallback is intentionally conservative: only accept a row when
-        // the surrounding table/row also indicates ভরি.
-        final rowText = row.parent?.text ?? '';
-        if (rowText.contains('ভরি') || rowText.toLowerCase().contains('vori')) {
-          gold[carat] ??= value;
-        }
-      } else if (normalized.contains('silver') ||
-          normalized.contains('রূপা') ||
-          normalized.contains('রুপা')) {
-        final rowText = row.parent?.text ?? '';
-        if (rowText.contains('ভরি') || rowText.toLowerCase().contains('vori')) {
-          silver[carat] ??= value;
-        }
+      final parentText = _cleanText(row.parent?.text ?? '');
+
+      final isGold =
+          normalizedLabel.contains('gold') ||
+          parentText.contains('সোনার বাজার মূল্য');
+
+      final isSilver =
+          normalizedLabel.contains('silver') ||
+          normalizedLabel.contains('রুপা') ||
+          normalizedLabel.contains('রূপা') ||
+          normalizedLabel.contains('চান্দি');
+
+      final isVori =
+          parentText.contains('প্রতি ভরি') ||
+          parentText.toLowerCase().contains('vori');
+
+      if (!isVori) continue;
+
+      if (isGold) {
+        gold[carat] ??= value;
+      } else if (isSilver) {
+        silver[carat] ??= value;
       }
     }
   }
 
+  String _cleanText(String text) {
+    return text
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .replaceAll('\u00A0', ' ')
+        .trim();
+  }
+
   double? _firstTakaNumber(String text) {
-    final normalized = _normalizeDigits(text).replaceAll('৳', '');
-    final matches = RegExp(r'\d[\d,]*(?:\.\d+)?').allMatches(normalized);
+    final normalized = _normalizeDigits(text)
+        .replaceAll('৳', '')
+        .replaceAll('Tk', '')
+        .replaceAll('TK', '');
+
+    /*
+     * প্রথমে comma সহ number খুঁজে বের করি।
+     *
+     * যেমন:
+     * 230,772
+     * 220,391
+     * 189,248
+     */
+    final matches =
+        RegExp(r'\d[\d,]*(?:\.\d+)?').allMatches(normalized);
 
     for (final match in matches) {
       final raw = match.group(0)!.replaceAll(',', '');
+
       final value = double.tryParse(raw);
-      if (value != null && value > 0) return value;
+
+      if (value != null && value > 0) {
+        return value;
+      }
     }
+
     return null;
   }
 
   String _normalizeDigits(String value) {
     const bangla = '০১২৩৪৫৬৭৮৯';
     const english = '0123456789';
+
     var result = value;
+
     for (var i = 0; i < bangla.length; i++) {
-      result = result.replaceAll(bangla[i], english[i]);
+      result = result.replaceAll(
+        bangla[i],
+        english[i],
+      );
     }
+
     return result;
   }
 
   double get _deductionPercent {
     final value = double.tryParse(
-      _normalizeDigits(_deductionController.text).replaceAll(',', '.'),
+      _normalizeDigits(
+        _deductionController.text,
+      ).replaceAll(',', '.'),
     );
-    if (value == null) return 18;
+
+    if (value == null) return 20;
+
     return value.clamp(0, 100);
   }
 
@@ -228,32 +326,59 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return perVori / _unitDivisors[_selectedUnit]!;
   }
 
+  /*
+   * পুরাতন সোনার দাম:
+   *
+   * Main GoldR price × (100 - deduction)% 
+   *
+   * Default deduction = 20%
+   */
   double _oldGoldRate(double perVori) {
     return perVori * (1 - (_deductionPercent / 100));
   }
 
   String _money(double value) {
-    // বাজারের rate সাধারণত পূর্ণ টাকায় দেখানো হয়; point/gram-এ decimal দরকার হতে পারে।
     final rounded = value.roundToDouble();
+
     final display = (value - rounded).abs() < 0.005
         ? value.toStringAsFixed(0)
         : value.toStringAsFixed(2);
 
     final parts = display.split('.');
+
     var integerPart = parts[0];
+
     final sign = integerPart.startsWith('-') ? '-' : '';
+
     integerPart = integerPart.replaceFirst('-', '');
 
     if (integerPart.length > 3) {
-      final lastThree = integerPart.substring(integerPart.length - 3);
-      var remaining = integerPart.substring(0, integerPart.length - 3);
+      final lastThree =
+          integerPart.substring(integerPart.length - 3);
+
+      var remaining =
+          integerPart.substring(0, integerPart.length - 3);
+
       final chunks = <String>[];
+
       while (remaining.length > 2) {
-        chunks.insert(0, remaining.substring(remaining.length - 2));
-        remaining = remaining.substring(0, remaining.length - 2);
+        chunks.insert(
+          0,
+          remaining.substring(
+            remaining.length - 2,
+          ),
+        );
+
+        remaining =
+            remaining.substring(0, remaining.length - 2);
       }
-      if (remaining.isNotEmpty) chunks.insert(0, remaining);
-      integerPart = '${chunks.join(',')},$lastThree';
+
+      if (remaining.isNotEmpty) {
+        chunks.insert(0, remaining);
+      }
+
+      integerPart =
+          '${chunks.join(',')},$lastThree';
     }
 
     final formatted =
@@ -265,12 +390,41 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   }
 
   String _toBanglaDigit(String input) {
-    const english = ['0','1','2','3','4','5','6','7','8','9'];
-    const bangla = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+    const english = [
+      '0',
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ];
+
+    const bangla = [
+      '০',
+      '১',
+      '২',
+      '৩',
+      '৪',
+      '৫',
+      '৬',
+      '৭',
+      '৮',
+      '৯',
+    ];
+
     var result = input;
+
     for (var i = 0; i < english.length; i++) {
-      result = result.replaceAll(english[i], bangla[i]);
+      result = result.replaceAll(
+        english[i],
+        bangla[i],
+      );
     }
+
     return result;
   }
 
@@ -287,11 +441,14 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           ),
         ),
         backgroundColor: const Color(0xFF8B0000),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ),
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            onPressed: _isLoading ? null : _fetchMarketData,
+            onPressed:
+                _isLoading ? null : _fetchMarketData,
             icon: const Icon(Icons.refresh),
           ),
         ],
@@ -308,32 +465,51 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   color: const Color(0xFF8B0000),
                   onRefresh: _fetchMarketData,
                   child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(10, 12, 10, 24),
+                    physics:
+                        const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      10,
+                      12,
+                      10,
+                      24,
+                    ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      crossAxisAlignment:
+                          CrossAxisAlignment.stretch,
                       children: [
                         _buildUnitSelector(),
+
                         const SizedBox(height: 14),
+
                         _buildDeductionBox(),
+
                         const SizedBox(height: 10),
+
                         _buildGoldTable(),
+
                         const SizedBox(height: 16),
+
                         _buildSilverTable(),
+
                         const SizedBox(height: 12),
+
                         if (_lastUpdated != null)
                           Text(
-                            'সর্বশেষ সফলভাবে আপডেট: ${_formatDateTime(_lastUpdated!)}',
+                            'সর্বশেষ সফলভাবে আপডেট: '
+                            '${_formatDateTime(_lastUpdated!)}',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.grey.shade700,
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              fontWeight:
+                                  FontWeight.w600,
                             ),
                           ),
+
                         const SizedBox(height: 4),
+
                         const Text(
-                          'Source: GoldR.org',
+                          'Main Rate Source: GoldR.org',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey,
@@ -359,7 +535,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               size: 52,
               color: Colors.grey,
             ),
+
             const SizedBox(height: 12),
+
             Text(
               _errorMessage!,
               textAlign: TextAlign.center,
@@ -368,13 +546,16 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 fontSize: 15,
               ),
             ),
+
             const SizedBox(height: 16),
+
             ElevatedButton.icon(
               onPressed: _fetchMarketData,
               icon: const Icon(Icons.refresh),
               label: const Text('আবার চেষ্টা করুন'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000),
+                backgroundColor:
+                    const Color(0xFF8B0000),
                 foregroundColor: Colors.white,
               ),
             ),
@@ -395,30 +576,48 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
     return Row(
       children: units.map((item) {
-        final selected = _selectedUnit == item.$1;
+        final selected =
+            _selectedUnit == item.$1;
+
         return Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
+            padding:
+                const EdgeInsets.symmetric(
+              horizontal: 2,
+            ),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () => setState(() => _selectedUnit = item.$1),
+                borderRadius:
+                    BorderRadius.circular(8),
+                onTap: () {
+                  setState(() {
+                    _selectedUnit = item.$1;
+                  });
+                },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
+                  duration:
+                      const Duration(milliseconds: 180),
                   height: 48,
                   decoration: BoxDecoration(
                     color: item.$2,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius:
+                        BorderRadius.circular(8),
                     border: Border.all(
-                      color: selected ? Colors.black87 : Colors.transparent,
+                      color: selected
+                          ? Colors.black87
+                          : Colors.transparent,
                       width: selected ? 2 : 0,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(selected ? .20 : .10),
-                        blurRadius: selected ? 5 : 3,
-                        offset: const Offset(0, 2),
+                        color: Colors.black.withOpacity(
+                          selected ? .20 : .10,
+                        ),
+                        blurRadius:
+                            selected ? 5 : 3,
+                        offset:
+                            const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -430,7 +629,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                       style: TextStyle(
                         color: item.$3,
                         fontSize: 13,
-                        fontWeight: FontWeight.w800,
+                        fontWeight:
+                            FontWeight.w800,
                       ),
                     ),
                   ),
@@ -445,11 +645,17 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
   Widget _buildDeductionBox() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 9,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE0D7CE)),
+        borderRadius:
+            BorderRadius.circular(10),
+        border: Border.all(
+          color: const Color(0xFFE0D7CE),
+        ),
       ),
       child: Row(
         children: [
@@ -462,24 +668,35 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               ),
             ),
           ),
+
           SizedBox(
             width: 82,
             height: 42,
             child: TextField(
-              controller: _deductionController,
-              keyboardType: const TextInputType.numberWithOptions(
+              controller:
+                  _deductionController,
+              keyboardType:
+                  const TextInputType.numberWithOptions(
                 decimal: true,
               ),
               textAlign: TextAlign.center,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                setState(() {});
+              },
               decoration: InputDecoration(
                 suffixText: '%',
                 filled: true,
-                fillColor: const Color(0xFFFFF8E1),
+                fillColor:
+                    const Color(0xFFFFF8E1),
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                    const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 7,
+                ),
+                border:
+                    OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(8),
                 ),
               ),
               style: const TextStyle(
@@ -498,18 +715,28 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       title: 'সোনার বাজার',
       header: const [
         'সোনার ক্যারেট',
-        'সোনার মূল্য',
-        'পুরাতন সোনার বিক্রয় মূল্য',
+        'মেইন বাজার মূল্য',
+        'পুরাতন সোনার মূল্য',
       ],
       rows: _goldCarats.map((carat) {
-        final base = _goldPerVori[carat]!;
+        final base =
+            _goldPerVori[carat]!;
+
         return [
           '$carat ক্যারেট',
           _money(_unitRate(base)),
-          _money(_unitRate(_oldGoldRate(base))),
+          _money(
+            _unitRate(
+              _oldGoldRate(base),
+            ),
+          ),
         ];
       }).toList(),
-      columnFlex: const [2, 2, 3],
+      columnFlex: const [
+        2,
+        2,
+        3,
+      ],
     );
   }
 
@@ -521,13 +748,18 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         'রূপার দাম',
       ],
       rows: _silverCarats.map((carat) {
-        final base = _silverPerVori[carat]!;
+        final base =
+            _silverPerVori[carat]!;
+
         return [
           '$carat ক্যারেট',
           _money(_unitRate(base)),
         ];
       }).toList(),
-      columnFlex: const [2, 3],
+      columnFlex: const [
+        2,
+        3,
+      ],
     );
   }
 
@@ -540,45 +772,67 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return Card(
       margin: EdgeInsets.zero,
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+      shape:
+          RoundedRectangleBorder(
+        borderRadius:
+            BorderRadius.circular(10),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment:
+            CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: const BoxDecoration(
+            padding:
+                const EdgeInsets.symmetric(
+              vertical: 10,
+            ),
+            decoration:
+                const BoxDecoration(
               color: Color(0xFF8B0000),
-              borderRadius: BorderRadius.vertical(
+              borderRadius:
+                  BorderRadius.vertical(
                 top: Radius.circular(10),
               ),
             ),
             child: Text(
               title,
-              textAlign: TextAlign.center,
+              textAlign:
+                  TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
           ),
+
           Table(
-            border: TableBorder.all(
-              color: const Color(0xFFD8D8D8),
+            border:
+                TableBorder.all(
+              color:
+                  const Color(0xFFD8D8D8),
               width: .8,
             ),
             columnWidths: {
-              for (var i = 0; i < columnFlex.length; i++)
-                i: FlexColumnWidth(columnFlex[i].toDouble()),
+              for (
+                var i = 0;
+                i < columnFlex.length;
+                i++
+              )
+                i: FlexColumnWidth(
+                  columnFlex[i].toDouble(),
+                ),
             },
             children: [
               TableRow(
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF0E6D8),
+                decoration:
+                    const BoxDecoration(
+                  color:
+                      Color(0xFFF0E6D8),
                 ),
-                children: header.map((text) {
+                children:
+                    header.map((text) {
                   return _tableCell(
                     text,
                     bold: true,
@@ -586,14 +840,27 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   );
                 }).toList(),
               ),
-              ...rows.asMap().entries.map((entry) {
-                final index = entry.key;
-                final row = entry.value;
+
+              ...rows.asMap()
+                  .entries
+                  .map((entry) {
+                final index =
+                    entry.key;
+
+                final row =
+                    entry.value;
+
                 return TableRow(
-                  decoration: BoxDecoration(
-                    color: index.isEven ? Colors.white : const Color(0xFFFFFCF7),
+                  decoration:
+                      BoxDecoration(
+                    color: index.isEven
+                        ? Colors.white
+                        : const Color(
+                            0xFFFFFCF7,
+                          ),
                   ),
-                  children: row.map((text) {
+                  children:
+                      row.map((text) {
                     return _tableCell(
                       text,
                       bold: true,
@@ -615,29 +882,52 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     double fontSize = 12,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
+      padding:
+          const EdgeInsets.symmetric(
         horizontal: 5,
         vertical: 10,
       ),
       child: Text(
         _toBanglaDigit(text),
-        textAlign: TextAlign.center,
+        textAlign:
+            TextAlign.center,
         style: TextStyle(
           fontSize: fontSize,
-          fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+          fontWeight: bold
+              ? FontWeight.bold
+              : FontWeight.normal,
           color: Colors.black87,
         ),
       ),
     );
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    final d = dateTime.day.toString().padLeft(2, '0');
-    final m = dateTime.month.toString().padLeft(2, '0');
-    final y = dateTime.year.toString();
-    final h = dateTime.hour % 12 == 0 ? 12 : dateTime.hour % 12;
-    final min = dateTime.minute.toString().padLeft(2, '0');
-    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
+  String _formatDateTime(
+    DateTime dateTime,
+  ) {
+    final d = dateTime.day
+        .toString()
+        .padLeft(2, '0');
+
+    final m = dateTime.month
+        .toString()
+        .padLeft(2, '0');
+
+    final y =
+        dateTime.year.toString();
+
+    final h = dateTime.hour % 12 == 0
+        ? 12
+        : dateTime.hour % 12;
+
+    final min = dateTime.minute
+        .toString()
+        .padLeft(2, '0');
+
+    final period =
+        dateTime.hour >= 12
+            ? 'PM'
+            : 'AM';
 
     return '${_toBanglaDigit('$d/$m/$y')} '
         '${_toBanglaDigit('$h:$min')} $period';
