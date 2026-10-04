@@ -2,9 +2,9 @@ name: Build Universal APK
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -17,19 +17,15 @@ jobs:
       - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.6'
-          channel: 'stable'
-
-      - name: Re-create Android Folder Dynamically
-        run: |
-          rm -rf android
-          flutter create . --platforms=android --project-name paroma_jewellery
+          flutter-version: "3.19.6"
+          channel: "stable"
+          cache: true
 
       - name: Get Flutter dependencies
         run: flutter pub get
