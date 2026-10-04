@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'todays_market_page.dart';
 
 void main() {
   runApp(const JewelleryApp());
@@ -229,6 +230,7 @@ class HomeScreen extends StatelessWidget {
                               title: 'আজকের বাজার',
                               icon: Icons.storefront_outlined,
                               iconColor: Colors.pink,
+                              targetScreen: const TodaysMarketPage(),
                             ),
                             _buildWhiteCard(
                               context: context,
