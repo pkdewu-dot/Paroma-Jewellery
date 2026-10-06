@@ -2372,7 +2372,6 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
       return;
     }
 
-    // ১. টার্গেট ক্যারেটের প্রতি ভরির দাম নির্ধারণ
     double calculatedRatePerVori = 0.0;
 
     if (targetKarat == 22) {
@@ -2385,10 +2384,7 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
       calculatedRatePerVori = rate24 * (targetKarat / 24);
     }
 
-    // ২. মোট ওজন ভরিতে রূপান্তর (১ ভরি = ১৬ আনা, ১ আনা = ৬ রতি, ১ রতি = ১০ পয়েন্ট)
     final double totalVori = vori + (ana / 16) + (roti / 96) + (point / 960);
-
-    // ৩. মোট দাম
     final double calculatedTotalPrice = totalVori * calculatedRatePerVori;
 
     setState(() {
@@ -2515,26 +2511,40 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
                         'ফলাফল (${toBanglaDigit(_calculatedKarat.toStringAsFixed(0))} ক্যারেট):',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.brown),
                       ),
-                      const Divider(thickness: 1),
+                      const Divider(thickness: 1.5),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('প্রতি ভরির রেট:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                          const Text(
+                            'প্রতি ভরির দাম:',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                          ),
                           Text(
                             '৳ ${formatNumberWithCommas(_perVoriPrice, isCurrency: true)}',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blueAccent,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('মোট আনুমানিক মূল্য:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'মোট আনুমানিক দাম:',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                           Text(
                             '৳ ${formatNumberWithCommas(_totalPrice, isCurrency: true)}',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
                           ),
                         ],
                       ),
@@ -2556,9 +2566,10 @@ class _GoldCalculatorScreenState extends State<GoldCalculatorScreen> {
         textAlign: TextAlign.center,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(fontSize: 12),
-          border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
           filled: true,
           fillColor: Colors.white,
         ),
