@@ -12,13 +12,13 @@ class TodaysMarketPage extends StatefulWidget {
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool _isLoading = false;
-  String _statusMessage = 'লাইভ বাজার দর লোড হচ্ছে...';
+  String _statusMessage = 'বাজার দর লোড হচ্ছে...';
 
   final TextEditingController _deductionController =
       TextEditingController(text: '18');
   double _deductionPercent = 18.0;
 
-  // বর্তমান বাজার দর (ভরি প্রতি BDT)
+  // বেজ রেট (ভরি প্রতি BDT)
   double goldRate22k = 142000;
   double goldRate21k = 135500;
   double goldRate18k = 116000;
@@ -31,76 +31,84 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   void initState() {
     super.initState();
     _deductionController.addListener(_updateDeduction);
-    _initApp();
-  }
-
-  Future<void> _initApp() async {
-    await _loadSavedRates();
-    await _fetchLiveRatesSafely();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
   }
 
   void _updateDeduction() {
     if (!mounted) return;
-    setState(() {
-      _deductionPercent = double.tryParse(_deductionController.text) ?? 18.0;
-    });
+    final val = double.tryParse(_deductionController.text);
+    if (val != null) {
+      setState(() {
+        _deductionPercent = val;
+      });
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    await _loadSavedRates();
+    await _fetchLiveRatesSafely();
   }
 
   Future<void> _fetchLiveRatesSafely() async {
     if (!mounted) return;
+
     setState(() {
       _isLoading = true;
-      _statusMessage = 'ইন্টারনেট থেকে আজকের লাইভ দর সংগ্রহ করা হচ্ছে...';
+      _statusMessage = 'ইন্টারনেট থেকে বাজার দর আপডেট হচ্ছে...';
     });
 
     try {
-      final response = await http
-          .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
-          .timeout(const Duration(seconds: 6));
+      final url = Uri.parse('https://open.er-api.com/v6/latest/USD');
+      final response = await http.get(url).timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data != null && data['rates'] != null && data['rates']['BDT'] != null) {
-          double bdtRate = ConvertToDouble(data['rates']['BDT']);
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        if (data.containsKey('rates') && data['rates'] != null) {
+          final rates = data['rates'];
+          if (rates is Map && rates.containsKey('BDT')) {
+            double bdtRate = 0.0;
+            var rawBdt = rates['BDT'];
+            if (rawBdt is num) {
+              bdtRate = rawBdt.toDouble();
+            } else if (rawBdt is String) {
+              bdtRate = double.tryParse(rawBdt) ?? 0.0;
+            }
 
-          // বিডি মার্কেট এডজাস্টমেন্ট
-          double base22k = bdtRate * 1180;
+            if (bdtRate > 0) {
+              double base22k = bdtRate * 1180;
 
-          if (mounted) {
-            setState(() {
-              goldRate22k = base22k;
-              goldRate21k = base22k * (21 / 22);
-              goldRate18k = base22k * (18 / 22);
+              if (mounted) {
+                setState(() {
+                  goldRate22k = base22k;
+                  goldRate21k = base22k * (21 / 22);
+                  goldRate18k = base22k * (18 / 22);
 
-              silverRate22k = base22k * 0.015;
-              silverRate21k = silverRate22k * (21 / 22);
-              silverRate18k = silverRate22k * (18 / 22);
+                  silverRate22k = base22k * 0.015;
+                  silverRate21k = silverRate22k * (21 / 22);
+                  silverRate18k = silverRate22k * (18 / 22);
 
-              _isLoading = false;
-              _statusMessage = 'সফলভাবে লাইভ দর আপডেট করা হয়েছে';
-            });
+                  _isLoading = false;
+                  _statusMessage = 'লাইভ দর আপডেট করা হয়েছে';
+                });
+              }
+              _saveRates();
+              return;
+            }
           }
-          await _saveRates();
-          return;
         }
       }
-    } catch (_) {
-      // নেটওয়ার্ক ফেল করলে অফলাইনে চলবে, অ্যাপ ক্র্যাশ করবে না
+    } catch (e) {
+      // Catch all exceptions silently
     }
 
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _statusMessage = 'সংরক্ষিত/ডিফল্ট বাজার দর প্রদর্শিত হচ্ছে';
+        _statusMessage = 'সংরক্ষিত/ডিফল্ট বাজার দর দেখানো হচ্ছে';
       });
     }
-  }
-
-  double ConvertToDouble(dynamic val) {
-    if (val is int) return val.toDouble();
-    if (val is double) return val;
-    if (val is String) return double.tryParse(val) ?? 0.0;
-    return 0.0;
   }
 
   Future<void> _saveRates() async {
@@ -115,11 +123,15 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   Future<void> _loadSavedRates() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (mounted) {
+      double? g22 = prefs.getDouble('g22');
+      double? g21 = prefs.getDouble('g21');
+      double? g18 = prefs.getDouble('g18');
+
+      if (mounted && g22 != null && g21 != null && g18 != null) {
         setState(() {
-          goldRate22k = prefs.getDouble('g22') ?? 142000;
-          goldRate21k = prefs.getDouble('g21') ?? 135500;
-          goldRate18k = prefs.getDouble('g18') ?? 116000;
+          goldRate22k = g22;
+          goldRate21k = g21;
+          goldRate18k = g18;
           silverRate22k = goldRate22k * 0.015;
           silverRate21k = silverRate22k * (21 / 22);
           silverRate18k = silverRate22k * (18 / 22);
