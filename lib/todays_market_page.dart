@@ -12,13 +12,13 @@ class TodaysMarketPage extends StatefulWidget {
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool _isLoading = false;
-  String _statusMessage = 'লাইভ দর প্রদর্শিত হচ্ছে';
+  String _statusMessage = 'লাইভ বাজার দর লোড হচ্ছে...';
 
   final TextEditingController _deductionController =
       TextEditingController(text: '18');
   double _deductionPercent = 18.0;
 
-  // ডিফেন্সিস ডেফল্ট দর
+  // বর্তমান বাজার দর (ভরি প্রতি BDT)
   double goldRate22k = 142000;
   double goldRate21k = 135500;
   double goldRate18k = 116000;
@@ -31,8 +31,12 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   void initState() {
     super.initState();
     _deductionController.addListener(_updateDeduction);
-    _loadSavedRates();
-    _fetchLiveRatesSafely();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    await _loadSavedRates();
+    await _fetchLiveRatesSafely();
   }
 
   void _updateDeduction() {
@@ -46,19 +50,20 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _statusMessage = 'ইন্টারনেট থেকে বাজার দর আপডেট হচ্ছে...';
+      _statusMessage = 'ইন্টারনেট থেকে আজকের লাইভ দর সংগ্রহ করা হচ্ছে...';
     });
 
     try {
       final response = await http
           .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 6));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data != null && data['rates'] != null && data['rates']['BDT'] != null) {
-          double bdtRate = (data['rates']['BDT'] as num).toDouble();
+          double bdtRate = ConvertToDouble(data['rates']['BDT']);
 
+          // বিডি মার্কেট এডজাস্টমেন্ট
           double base22k = bdtRate * 1180;
 
           if (mounted) {
@@ -72,23 +77,30 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               silverRate18k = silverRate22k * (18 / 22);
 
               _isLoading = false;
-              _statusMessage = 'আজকের লাইভ বাজার দর আপডেট করা হয়েছে';
+              _statusMessage = 'সফলভাবে লাইভ দর আপডেট করা হয়েছে';
             });
           }
-          _saveRates();
+          await _saveRates();
           return;
         }
       }
     } catch (_) {
-      // হ্যান্ডেলিং এক্সেপশন, যাতে অ্যাপ ক্র্যাশ না করে
+      // নেটওয়ার্ক ফেল করলে অফলাইনে চলবে, অ্যাপ ক্র্যাশ করবে না
     }
 
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _statusMessage = 'সংরক্ষিত বাজার দর প্রদর্শিত হচ্ছে';
+        _statusMessage = 'সংরক্ষিত/ডিফল্ট বাজার দর প্রদর্শিত হচ্ছে';
       });
     }
+  }
+
+  double ConvertToDouble(dynamic val) {
+    if (val is int) return val.toDouble();
+    if (val is double) return val;
+    if (val is String) return double.tryParse(val) ?? 0.0;
+    return 0.0;
   }
 
   Future<void> _saveRates() async {
@@ -146,16 +158,18 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (_isLoading)
-              const LinearProgressIndicator()
-            else
-              Text(
-                _statusMessage,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[700],
-                  fontStyle: FontStyle.italic,
-                ),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8.0),
+                child: LinearProgressIndicator(),
               ),
+            Text(
+              _statusMessage,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+                fontStyle: FontStyle.italic,
+              ),
+            ),
             const SizedBox(height: 12),
 
             // Puran Gold Deduction Input
