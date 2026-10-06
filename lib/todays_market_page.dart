@@ -1,10 +1,10 @@
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:html/parser.dart' as html_parser;
+import 'package:webview_flutter/webview_flutter.dart';
 
 class TodaysMarketPage extends StatefulWidget {
   const TodaysMarketPage({Key? key}) : super(key: key);
@@ -14,20 +14,23 @@ class TodaysMarketPage extends StatefulWidget {
 }
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
-  static const String _sourceUrl = 'https://www.goldr.org/';
+  late final WebViewController _web;
 
-  final TextEditingController _deductionController =
+  final TextEditingController _deduction =
       TextEditingController(text: '18');
 
-  Map<String, int> _goldRates = {};
-  Map<String, int> _silverRates = {};
+  final Map<String, int> _gold = {};
+  final Map<String, int> _silver = {};
 
-  bool _loading = false;
+  bool _loading = true;
+  bool _pageReady = false;
+  bool _reading = false;
   String? _error;
-  DateTime? _lastUpdated;
+  DateTime? _updated;
+  Timer? _timer;
 
-  double get _deduction {
-    final value = double.tryParse(_deductionController.text.trim());
+  double get _percent {
+    final value = double.tryParse(_deduction.text.trim());
     if (value == null) return 18;
     return value.clamp(0, 100).toDouble();
   }
@@ -35,207 +38,215 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   @override
   void initState() {
     super.initState();
-    _fetchRates();
+
+    _web = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.white)
+      ..addJavaScriptChannel(
+        'GoldRates',
+        onMessageReceived: (message) => _receive(message.message),
+      )
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageStarted: (_) {
+            _pageReady = false;
+            if (mounted) {
+              setState(() {
+                _loading = true;
+                _error = null;
+              });
+            }
+          },
+          onPageFinished: (_) {
+            _pageReady = true;
+            _scheduleRead();
+          },
+          onWebResourceError: (error) {
+            if (error.isForMainFrame == true && mounted) {
+              setState(() {
+                _loading = false;
+                _error = 'GoldR খুলতে সমস্যা হয়েছে। ইন্টারনেট পরীক্ষা করুন।';
+              });
+            }
+          },
+        ),
+      )
+      ..loadRequest(Uri.parse('https://www.goldr.org/'));
   }
 
   @override
   void dispose() {
-    _deductionController.dispose();
+    _timer?.cancel();
+    _deduction.dispose();
     super.dispose();
   }
 
-  String _englishDigits(String text) {
-    const bengali = '০১২৩৪৫৬৭৮৯';
-    const english = '0123456789';
-
-    return text.split('').map((character) {
-      final index = bengali.indexOf(character);
-      return index < 0 ? character : english[index];
-    }).join();
+  void _scheduleRead() {
+    _timer?.cancel();
+    _timer = Timer(const Duration(seconds: 5), _readRates);
   }
 
-  int? _extractTaka(String text) {
-    final normalized = _englishDigits(text);
+  Future<void> _readRates() async {
+    if (!_pageReady || _reading) return;
+    _reading = true;
 
-    final match = RegExp(
-      r'৳\s*([0-9,]+)',
-    ).firstMatch(normalized);
-
-    if (match == null) return null;
-
-    return int.tryParse(
-      match.group(1)!.replaceAll(',', ''),
-    );
+    const js = r'''
+(function () {
+  function englishDigits(s) {
+    return String(s).replace(/[০-৯]/g, function (d) {
+      return String('০১২৩৪৫৬৭৮৯'.indexOf(d));
+    });
   }
 
-  Map<String, int> _readRates(
-    html_parser.Document document, {
-    required bool silver,
-  }) {
-    final result = <String, int>{};
+  function takaValues(s) {
+    const text = englishDigits(s);
+    const matches = text.match(/৳\s*[0-9,]+(?:\.[0-9]+)?/g) || [];
+    return matches.map(function (x) {
+      return Number(x.replace(/৳/g, '').replace(/,/g, '').trim());
+    }).filter(function (x) {
+      return Number.isFinite(x) && x > 0;
+    });
+  }
 
-    final rows = document.querySelectorAll('tr');
+  const result = { gold: {}, silver: {} };
+  const keys = ['22', '21', '18'];
 
-    for (final row in rows) {
-      final cells = row.querySelectorAll('th, td');
-      if (cells.length < 2) continue;
+  document.querySelectorAll('tr').forEach(function (row) {
+    const cells = Array.from(row.querySelectorAll('th, td'));
+    if (cells.length < 2) return;
 
-      final label = cells.first.text
-          .replaceAll('\u00a0', ' ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim()
-          .toLowerCase();
+    const label = englishDigits(cells[0].innerText || '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
 
-      for (final karat in ['22', '21', '18']) {
-        final expected = silver
-            ? RegExp('$karat\\s*karat\\s*silver')
-            : RegExp('$karat\\s*karat\\s*gold');
+    const goldMatch = label.match(/(22|21|18)\s*karat\s*gold/);
+    const silverMatch = label.match(/(22|21|18)\s*karat\s*silver/);
+    if (!goldMatch && !silverMatch) return;
 
-        if (!expected.hasMatch(label)) continue;
+    const prices = takaValues(cells.slice(1).map(function (c) {
+      return c.innerText || '';
+    }).join(' '));
 
-        // প্রথম টাকার ঘরটি বর্তমান বাজারমূল্য।
-        int? price;
+    if (!prices.length) return;
 
-        for (final cell in cells.skip(1)) {
-          final cellText = cell.text.trim();
+    const price = Math.max.apply(null, prices);
+    const group = goldMatch ? 'gold' : 'silver';
+    const karat = (goldMatch || silverMatch)[1];
 
-          if (cellText.contains('৳')) {
-            price = _extractTaka(cellText);
-            break;
-          }
+    if (!result[group][karat] || price > result[group][karat]) {
+      result[group][karat] = price;
+    }
+  });
+
+  GoldRates.postMessage(JSON.stringify(result));
+})();
+''';
+
+    try {
+      await _web.runJavaScript(js);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'রেট পড়া যায়নি। Refresh করে আবার চেষ্টা করুন।';
+        });
+      }
+    } finally {
+      _reading = false;
+    }
+  }
+
+  void _receive(String message) {
+    try {
+      final data = jsonDecode(message) as Map<String, dynamic>;
+      final rawGold = Map<String, dynamic>.from(data['gold'] ?? {});
+      final rawSilver = Map<String, dynamic>.from(data['silver'] ?? {});
+
+      final gold = <String, int>{};
+      final silver = <String, int>{};
+
+      for (final k in ['22', '21', '18']) {
+        final g = rawGold[k];
+        final s = rawSilver[k];
+
+        if (g is num && g > 0) gold[k] = g.round();
+        if (s is num && s > 0) silver[k] = s.round();
+      }
+
+      if (gold.length != 3 || silver.length != 3) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error =
+                'সব রেট পাওয়া যায়নি। GoldR-এর পেজের কাঠামো বদলে থাকতে পারে।';
+          });
         }
+        return;
+      }
 
-        if (price != null && price > 0) {
-          result[karat] = price;
-        }
+      if (!mounted) return;
+
+      setState(() {
+        _gold
+          ..clear()
+          ..addAll(gold);
+        _silver
+          ..clear()
+          ..addAll(silver);
+        _updated = DateTime.now();
+        _loading = false;
+        _error = null;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'রেটের তথ্য বুঝতে সমস্যা হয়েছে। আবার Refresh করুন।';
+        });
       }
     }
-
-    return result;
   }
 
-  Future<void> _fetchRates() async {
-    if (_loading) return;
-
+  Future<void> _refresh() async {
     setState(() {
       _loading = true;
       _error = null;
     });
 
     try {
-      final response = await http
-          .get(
-            Uri.parse(_sourceUrl),
-            headers: const {
-              'User-Agent':
-                  'Mozilla/5.0 (Linux; Android 10) '
-                  'AppleWebKit/537.36 Chrome/120.0.0.0 '
-                  'Mobile Safari/537.36',
-              'Accept':
-                  'text/html,application/xhtml+xml,'
-                  'application/xml;q=0.9,*/*;q=0.8',
-            },
-          )
-          .timeout(const Duration(seconds: 25));
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'GoldR ওয়েবসাইট থেকে তথ্য পাওয়া যায়নি '
-          '(HTTP ${response.statusCode})',
-        );
-      }
-
-      final document = html_parser.parse(
-        response.body,
-      );
-
-      final gold = _readRates(
-        document,
-        silver: false,
-      );
-
-      final silver = _readRates(
-        document,
-        silver: true,
-      );
-
-      if (gold.length != 3 || silver.length != 3) {
-        throw Exception(
-          'ওয়েবসাইটের রেট শনাক্ত করা যায়নি। '
-          'আবার Refresh করুন।',
-        );
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _goldRates = gold;
-        _silverRates = silver;
-        _lastUpdated = DateTime.now();
-        _error = null;
-      });
-    } on TimeoutException {
-      if (mounted) {
-        setState(() {
-          _error = 'ইন্টারনেট সংযোগ ধীর। আবার চেষ্টা করুন।';
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _error = e.toString().replaceFirst('Exception: ', '');
-        });
-      }
-    } finally {
+      await _web.reload();
+    } catch (_) {
       if (mounted) {
         setState(() {
           _loading = false;
+          _error = 'Refresh করা যায়নি।';
         });
       }
     }
   }
 
+  int _oldPrice(int rate) => (rate * (1 - _percent / 100)).round();
+
   String _money(int value) {
-    final digits = value.toString();
-    return digits.replaceAllMapped(
+    return value.toString().replaceAllMapped(
       RegExp(r'\B(?=(\d{3})+(?!\d))'),
-      (match) => ',',
+      (_) => ',',
     );
   }
 
-  int _afterDeduction(int rate) {
-    return (rate * (1 - _deduction / 100)).round();
-  }
-
-  String _timeText() {
-    if (_lastUpdated == null) return '';
-
-    final time = _lastUpdated!;
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-
-    return 'সর্বশেষ চেক: $hour:$minute';
-  }
-
-  Widget _sectionTitle(String title, IconData icon) {
+  Widget _heading(String text, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: 18,
-        bottom: 10,
-      ),
+      padding: const EdgeInsets.only(top: 18, bottom: 10),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Colors.amber.shade800,
-            size: 25,
-          ),
+          Icon(icon, color: Colors.amber.shade800),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              title,
+              text,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -245,11 +256,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _rateCard({
-    required String title,
-    required int? rate,
-    required bool showDeduction,
-  }) {
+  Widget _rateCard(String title, int? rate, {bool deduction = false}) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 10),
@@ -257,61 +264,26 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.amber.shade200,
-        ),
+        border: Border.all(color: Colors.amber.shade200),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           ),
           const SizedBox(height: 10),
           if (rate == null)
             const Text('রেট পাওয়া যায়নি')
           else ...[
-            Row(
-              children: [
-                const Expanded(
-                  child: Text('আজকের বাজার'),
-                ),
-                Text(
-                  '৳${_money(rate)}',
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            if (showDeduction) ...[
-              const Divider(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'ডিডাকশন ${_deduction.toStringAsFixed(
-                        _deduction.truncateToDouble() ==
-                                _deduction
-                            ? 0
-                            : 2,
-                      )}%',
-                    ),
-                  ),
-                  Text(
-                    '৳${_money(_afterDeduction(rate))}',
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green.shade800,
-                    ),
-                  ),
-                ],
+            _priceLine('আজকের বাজার', rate),
+            if (deduction) ...[
+              const Divider(height: 24),
+              _priceLine(
+                'ডিডাকশন ${_percent.toStringAsFixed(_percent % 1 == 0 ? 0 : 2)}%',
+                _oldPrice(rate),
+                color: Colors.green.shade800,
               ),
             ],
           ],
@@ -320,56 +292,36 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _buildRates() {
+  Widget _priceLine(String label, int value, {Color? color}) {
+    return Row(
+      children: [
+        Expanded(child: Text(label)),
+        Text(
+          '৳${_money(value)}',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _ratesList() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle(
-          '২২ ক্যারেট সোনার আজকের বাজার',
-          Icons.diamond_outlined,
-        ),
-        _rateCard(
-          title: '২২K সোনা',
-          rate: _goldRates['22'],
-          showDeduction: true,
-        ),
-        _sectionTitle(
-          '২১ ক্যারেট সোনার আজকের বাজার',
-          Icons.diamond_outlined,
-        ),
-        _rateCard(
-          title: '২১K সোনা',
-          rate: _goldRates['21'],
-          showDeduction: true,
-        ),
-        _sectionTitle(
-          '১৮ ক্যারেট সোনার আজকের বাজার',
-          Icons.diamond_outlined,
-        ),
-        _rateCard(
-          title: '১৮K সোনা',
-          rate: _goldRates['18'],
-          showDeduction: true,
-        ),
-        _sectionTitle(
-          'আজকের রূপার বাজার',
-          Icons.circle_outlined,
-        ),
-        _rateCard(
-          title: '২২K রূপা',
-          rate: _silverRates['22'],
-          showDeduction: false,
-        ),
-        _rateCard(
-          title: '২১K রূপা',
-          rate: _silverRates['21'],
-          showDeduction: false,
-        ),
-        _rateCard(
-          title: '১৮K রূপা',
-          rate: _silverRates['18'],
-          showDeduction: false,
-        ),
+        _heading('২২ ক্যারেট সোনার আজকের বাজার', Icons.diamond_outlined),
+        _rateCard('২২K সোনা', _gold['22'], deduction: true),
+        _heading('২১ ক্যারেট সোনার আজকের বাজার', Icons.diamond_outlined),
+        _rateCard('২১K সোনা', _gold['21'], deduction: true),
+        _heading('১৮ ক্যারেট সোনার আজকের বাজার', Icons.diamond_outlined),
+        _rateCard('১৮K সোনা', _gold['18'], deduction: true),
+        _heading('আজকের রূপার বাজার', Icons.circle_outlined),
+        _rateCard('২২K রূপা', _silver['22']),
+        _rateCard('২১K রূপা', _silver['21']),
+        _rateCard('১৮K রূপা', _silver['18']),
       ],
     );
   }
@@ -379,132 +331,110 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFFFFBF3),
       appBar: AppBar(
-        title: const Text(
-          'আজকের বাজার',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        title: const Text('আজকের বাজার'),
         backgroundColor: Colors.amber.shade800,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            tooltip: 'রেট Refresh করুন',
-            onPressed: _loading ? null : _fetchRates,
+            onPressed: _refresh,
             icon: const Icon(Icons.refresh),
+            tooltip: 'রেট Refresh করুন',
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _fetchRates,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Container(
-              padding: const EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.amber.shade300,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'পুরান সোনার ডিডাকশন %',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+      body: Stack(
+        children: [
+          RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.shade300),
                   ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _deductionController,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'[0-9.]'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'পুরান সোনার ডিডাকশন %',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _deduction,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9.]'),
+                          ),
+                        ],
+                        decoration: InputDecoration(
+                          suffixText: '%',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
-                    decoration: InputDecoration(
-                      hintText: '১৮',
-                      suffixText: '%',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    onChanged: (_) {
-                      setState(() {});
-                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_loading)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                if (_error != null) ...[
+                  Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _refresh,
+                    child: const Text('আবার চেষ্টা করুন'),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (_loading)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-            if (_error != null) ...[
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  _error!,
-                  style: TextStyle(
-                    color: Colors.red.shade900,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _loading ? null : _fetchRates,
-                icon: const Icon(Icons.refresh),
-                label: const Text('আবার চেষ্টা করুন'),
-              ),
-            ],
-            if (_goldRates.isNotEmpty &&
-                _silverRates.isNotEmpty) ...[
-              if (_lastUpdated != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text(
-                    _timeText(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
+                if (_gold.isNotEmpty && _silver.isNotEmpty) ...[
+                  if (_updated != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'সর্বশেষ চেক: '
+                        '${_updated!.hour.toString().padLeft(2, '0')}:'
+                        '${_updated!.minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              _buildRates(),
-            ],
-            if (!_loading &&
-                _error == null &&
-                _goldRates.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text(
-                  'বাজারের রেট লোড হচ্ছে না। '
-                  'Refresh করে আবার চেষ্টা করুন।',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            const SizedBox(height: 20),
-          ],
-        ),
+                  _ratesList(),
+                ],
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+          Positioned(
+            left: 0,
+            bottom: 0,
+            width: 2,
+            height: 2,
+            child: WebViewWidget(controller: _web),
+          ),
+        ],
       ),
     );
   }
