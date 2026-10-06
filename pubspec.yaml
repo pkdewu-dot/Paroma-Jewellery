@@ -1,6 +1,5 @@
-name: gold_calculator_app
-description: Live Automatic Gold & Silver Rate Calculator for Jewellers
-
+name: paroma_jewellery
+description: "A new Flutter project for Paroma Jewellers."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -11,9 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.0
-  shared_preferences: ^2.2.2
+
   cupertino_icons: ^1.0.6
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:
