@@ -12,13 +12,13 @@ class TodaysMarketPage extends StatefulWidget {
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool _isLoading = false;
-  String _statusMessage = 'বাজার দর লোড হচ্ছে...';
+  String _statusMessage = 'লাইভ দর দেখতে নিচের বাটনে চাপুন';
 
   final TextEditingController _deductionController =
       TextEditingController(text: '18');
   double _deductionPercent = 18.0;
 
-  // বেজ রেট (ভরি প্রতি BDT)
+  // ব্যাকআপ ও ডিফল্ট বাজার দর
   double goldRate22k = 142000;
   double goldRate21k = 135500;
   double goldRate18k = 116000;
@@ -31,9 +31,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   void initState() {
     super.initState();
     _deductionController.addListener(_updateDeduction);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadInitialData();
-    });
+    _loadSavedRates();
   }
 
   void _updateDeduction() {
@@ -46,11 +44,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     }
   }
 
-  Future<void> _loadInitialData() async {
-    await _loadSavedRates();
-    await _fetchLiveRatesSafely();
-  }
-
   Future<void> _fetchLiveRatesSafely() async {
     if (!mounted) return;
 
@@ -60,8 +53,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     });
 
     try {
-      final url = Uri.parse('https://open.er-api.com/v6/latest/USD');
-      final response = await http.get(url).timeout(const Duration(seconds: 5));
+      final response = await http
+          .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = jsonDecode(response.body);
@@ -90,7 +84,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   silverRate18k = silverRate22k * (18 / 22);
 
                   _isLoading = false;
-                  _statusMessage = 'লাইভ দর আপডেট করা হয়েছে';
+                  _statusMessage = 'লাইভ দর সফলভাবে আপডেট করা হয়েছে';
                 });
               }
               _saveRates();
@@ -99,14 +93,12 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           }
         }
       }
-    } catch (e) {
-      // Catch all exceptions silently
-    }
+    } catch (_) {}
 
     if (mounted) {
       setState(() {
         _isLoading = false;
-        _statusMessage = 'সংরক্ষিত/ডিফল্ট বাজার দর দেখানো হচ্ছে';
+        _statusMessage = 'ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন';
       });
     }
   }
@@ -156,30 +148,50 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       appBar: AppBar(
         title: const Text('আজকের বাজার'),
         backgroundColor: Colors.amber[800],
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _fetchLiveRatesSafely,
-            tooltip: 'রিফ্রেশ করুন',
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 8.0),
-                child: LinearProgressIndicator(),
-              ),
-            Text(
-              _statusMessage,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[700],
-                fontStyle: FontStyle.italic,
+            // Live Sync Button
+            Card(
+              color: Colors.amber[50],
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _statusMessage,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _fetchLiveRatesSafely,
+                          icon: _isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.refresh),
+                          label: Text(_isLoading ? 'অপেক্ষা...' : 'লাইভ দর আনুন'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber[800],
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
