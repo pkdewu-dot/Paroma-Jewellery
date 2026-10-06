@@ -11,20 +11,18 @@ class TodaysMarketPage extends StatefulWidget {
 }
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
-  bool _isLoading = true;
-  String _statusMessage = 'লাইভ রেট লোড হচ্ছে...';
+  bool _isLoading = false;
+  String _statusMessage = 'লাইভ দর প্রদর্শিত হচ্ছে';
 
-  // ডিডাকশন পার্সেন্টেজ কন্ট্রোলার
   final TextEditingController _deductionController =
       TextEditingController(text: '18');
   double _deductionPercent = 18.0;
 
-  // সোনার লাইভ বেজ রেট (ভরি প্রতি BDT)
+  // ডিফেন্সিস ডেফল্ট দর
   double goldRate22k = 142000;
   double goldRate21k = 135500;
   double goldRate18k = 116000;
 
-  // রূপার লাইভ বেজ রেট (ভরি প্রতি BDT)
   double silverRate22k = 2100;
   double silverRate21k = 2000;
   double silverRate18k = 1750;
@@ -34,76 +32,88 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     super.initState();
     _deductionController.addListener(_updateDeduction);
     _loadSavedRates();
-    _fetchLiveRates();
+    _fetchLiveRatesSafely();
   }
 
   void _updateDeduction() {
+    if (!mounted) return;
     setState(() {
-      _deductionPercent = double.tryParse(_deductionController.text) ?? 0.0;
+      _deductionPercent = double.tryParse(_deductionController.text) ?? 18.0;
     });
   }
 
-  Future<void> _fetchLiveRates() async {
+  Future<void> _fetchLiveRatesSafely() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
-      _statusMessage = 'ইন্টারনেট থেকে লাইভ বাজার দর সংগ্রহ করা হচ্ছে...';
+      _statusMessage = 'ইন্টারনেট থেকে বাজার দর আপডেট হচ্ছে...';
     });
 
     try {
       final response = await http
           .get(Uri.parse('https://open.er-api.com/v6/latest/USD'))
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        double bdtRate = double.parse(data['rates']['BDT'].toString());
+        if (data != null && data['rates'] != null && data['rates']['BDT'] != null) {
+          double bdtRate = (data['rates']['BDT'] as num).toDouble();
 
-        // আন্তর্জাতিক দর হিসাব ও লোকাল প্যাক অ্যাডজাস্টমেন্ট
-        double base22k = bdtRate * 1180;
+          double base22k = bdtRate * 1180;
 
-        setState(() {
-          goldRate22k = base22k;
-          goldRate21k = base22k * (21 / 22);
-          goldRate18k = base22k * (18 / 22);
+          if (mounted) {
+            setState(() {
+              goldRate22k = base22k;
+              goldRate21k = base22k * (21 / 22);
+              goldRate18k = base22k * (18 / 22);
 
-          silverRate22k = base22k * 0.015;
-          silverRate21k = silverRate22k * (21 / 22);
-          silverRate18k = silverRate22k * (18 / 22);
+              silverRate22k = base22k * 0.015;
+              silverRate21k = silverRate22k * (21 / 22);
+              silverRate18k = silverRate22k * (18 / 22);
 
-          _isLoading = false;
-          _statusMessage = 'লাইভ দর আপডেট করা হয়েছে';
-        });
-
-        _saveRates();
-      } else {
-        _useFallback();
+              _isLoading = false;
+              _statusMessage = 'আজকের লাইভ বাজার দর আপডেট করা হয়েছে';
+            });
+          }
+          _saveRates();
+          return;
+        }
       }
-    } catch (e) {
-      _useFallback();
+    } catch (_) {
+      // হ্যান্ডেলিং এক্সেপশন, যাতে অ্যাপ ক্র্যাশ না করে
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = 'সংরক্ষিত বাজার দর প্রদর্শিত হচ্ছে';
+      });
     }
   }
 
-  void _useFallback() {
-    setState(() {
-      _isLoading = false;
-      _statusMessage = 'পূর্বে সংরক্ষিত রেট প্রদর্শন করা হচ্ছে';
-    });
-  }
-
   Future<void> _saveRates() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('g22', goldRate22k);
-    await prefs.setDouble('g21', goldRate21k);
-    await prefs.setDouble('g18', goldRate18k);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('g22', goldRate22k);
+      await prefs.setDouble('g21', goldRate21k);
+      await prefs.setDouble('g18', goldRate18k);
+    } catch (_) {}
   }
 
   Future<void> _loadSavedRates() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      goldRate22k = prefs.getDouble('g22') ?? 142000;
-      goldRate21k = prefs.getDouble('g21') ?? 135500;
-      goldRate18k = prefs.getDouble('g18') ?? 116000;
-    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (mounted) {
+        setState(() {
+          goldRate22k = prefs.getDouble('g22') ?? 142000;
+          goldRate21k = prefs.getDouble('g21') ?? 135500;
+          goldRate18k = prefs.getDouble('g18') ?? 116000;
+          silverRate22k = goldRate22k * 0.015;
+          silverRate21k = silverRate22k * (21 / 22);
+          silverRate18k = silverRate22k * (18 / 22);
+        });
+      }
+    } catch (_) {}
   }
 
   double _calculateDeductedPrice(double basePrice) {
@@ -125,144 +135,136 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _fetchLiveRates,
+            onPressed: _fetchLiveRatesSafely,
             tooltip: 'রিফ্রেশ করুন',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  Text('লাইভ বাজার দর লোড হচ্ছে...'),
-                ],
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_isLoading)
+              const LinearProgressIndicator()
+            else
+              Text(
+                _statusMessage,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                  fontStyle: FontStyle.italic,
+                ),
               ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _statusMessage,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[700],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-                  // Puran Gold Deduction Input
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'পুরান সোনার ডিডাকশন %',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+            // Puran Gold Deduction Input
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'পুরান সোনার ডিডাকশন %',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 100,
+                          child: TextField(
+                            controller: _deductionController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 100,
-                                child: TextField(
-                                  controller: _deductionController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '%',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '%',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // 22K Gold
-                  _buildGoldSection(
-                    headline: '২২ ক্যারেট সোনার আজকের বাজার',
-                    karatLabel: '২২K',
-                    basePrice: goldRate22k,
-                  ),
-
-                  // 21K Gold
-                  _buildGoldSection(
-                    headline: '২১ ক্যারেট সোনার আজকের বাজার',
-                    karatLabel: '২১K',
-                    basePrice: goldRate21k,
-                  ),
-
-                  // 18K Gold
-                  _buildGoldSection(
-                    headline: '১৮ ক্যারেট সোনার আজকের বাজার',
-                    karatLabel: '১৮K',
-                    basePrice: goldRate18k,
-                  ),
-
-                  // Silver Section
-                  const Text(
-                    'আজকের রূপার বাজার',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.brown,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    elevation: 1,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '২২K: ৳${silverRate22k.toStringAsFixed(0)} /ভরি',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '২১K: ৳${silverRate21k.toStringAsFixed(0)} /ভরি',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '১৮K: ৳${silverRate18k.toStringAsFixed(0)} /ভরি',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
+            const SizedBox(height: 20),
+
+            // 22K Gold
+            _buildGoldSection(
+              headline: '২২ ক্যারেট সোনার আজকের বাজার',
+              karatLabel: '২২K',
+              basePrice: goldRate22k,
+            ),
+
+            // 21K Gold
+            _buildGoldSection(
+              headline: '২১ ক্যারেট সোনার আজকের বাজার',
+              karatLabel: '২১K',
+              basePrice: goldRate21k,
+            ),
+
+            // 18K Gold
+            _buildGoldSection(
+              headline: '১৮ ক্যারেট সোনার আজকের বাজার',
+              karatLabel: '১৮K',
+              basePrice: goldRate18k,
+            ),
+
+            // Silver Section
+            const Text(
+              'আজকের রূপার বাজার',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.brown,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 1,
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '২২K: ৳${silverRate22k.toStringAsFixed(0)} /ভরি',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '২১K: ৳${silverRate21k.toStringAsFixed(0)} /ভরি',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '১৮K: ৳${silverRate18k.toStringAsFixed(0)} /ভরি',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
