@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class TodaysMarketPage extends StatefulWidget {
   const TodaysMarketPage({super.key});
@@ -12,57 +12,313 @@ class TodaysMarketPage extends StatefulWidget {
 }
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
-  WebViewController? _controller;
+  static const double gramsPerBhori = 11.664;
+  static const double anaPerBhori = 16.0;
+  static const double rotiPerBhori = 96.0;
 
-  bool _loading = true;
-  bool _fetching = false;
+  bool isLoading = true;
+  String errorMessage = '';
+  String lastUpdated = '';
+  bool showingCachedData = false;
 
-  String _error = '';
+  double gold22 = 0;
+  double gold21 = 0;
+  double gold18 = 0;
 
-  Map<String, dynamic> _prices = {};
+  double silver22 = 0;
+  double silver21 = 0;
+  double silver18 = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadSavedOrFetch();
+    _loadPrices();
   }
 
   // ============================================================
-  // BASIC CONSTANTS
+  // MAIN LOAD LOGIC
   // ============================================================
 
-  static const double gramPerBhori = 11.664;
-  static const double anaPerBhori = 16.0;
-  static const double rotiPerBhori = 96.0;
+  Future<void> _loadPrices({
+    bool forceRefresh = false,
+  }) async {
+    if (!mounted) return;
+
+    setState(() {
+      isLoading = true;
+      errorMessage = '';
+      showingCachedData = false;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final today = _todayKey();
+      final savedDate =
+          prefs.getString('market_saved_date') ?? '';
+
+      // --------------------------------------------------------
+      // যদি আজকের data already save করা থাকে,
+      // তাহলে আবার internet request করার দরকার নেই।
+      // --------------------------------------------------------
+
+      if (!forceRefresh &&
+          savedDate == today &&
+          prefs.containsKey('gold22')) {
+        _loadSavedData(prefs);
+
+        if (!mounted) return;
+
+        setState(() {
+          isLoading = false;
+        });
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // আজকের data নেই → API থেকে fetch
+      // --------------------------------------------------------
+
+      await _fetchFreshPrices(prefs);
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
+    } catch (e) {
+      // --------------------------------------------------------
+      // API কাজ না করলে আগের saved data দেখাবে
+      // --------------------------------------------------------
+
+      final prefs = await SharedPreferences.getInstance();
+
+      if (prefs.containsKey('gold22')) {
+        _loadSavedData(prefs);
+
+        if (!mounted) return;
+
+        setState(() {
+          isLoading = false;
+          showingCachedData = true;
+          errorMessage =
+              'নতুন বাজার দর পাওয়া যায়নি।\n'
+              'সর্বশেষ সংরক্ষিত দর দেখানো হচ্ছে।';
+        });
+
+        return;
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+        errorMessage =
+            'আজকের বাজারের তথ্য পাওয়া যাচ্ছে না।\n\n'
+            'ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।';
+      });
+    }
+  }
 
   // ============================================================
-  // START
+  // FETCH GOLD + SILVER
   // ============================================================
 
-  Future<void> _loadSavedOrFetch() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _fetchFreshPrices(
+    SharedPreferences prefs,
+  ) async {
+    final goldResponse = await http
+        .get(
+          Uri.parse(
+            'https://gold-price.bd/api/gold/latest.json',
+          ),
+        )
+        .timeout(
+          const Duration(seconds: 15),
+        );
 
-    final savedDate = prefs.getString('market_date') ?? '';
-    final today = _todayKey();
+    final silverResponse = await http
+        .get(
+          Uri.parse(
+            'https://gold-price.bd/api/silver/latest.json',
+          ),
+        )
+        .timeout(
+          const Duration(seconds: 15),
+        );
 
-    final savedJson = prefs.getString('market_prices');
-
-    if (savedDate == today && savedJson != null) {
-      try {
-        final decoded = jsonDecode(savedJson);
-
-        if (decoded is Map) {
-          setState(() {
-            _prices = Map<String, dynamic>.from(decoded);
-            _loading = false;
-          });
-
-          return;
-        }
-      } catch (_) {}
+    if (goldResponse.statusCode != 200) {
+      throw Exception(
+        'Gold API error: ${goldResponse.statusCode}',
+      );
     }
 
-    await _fetchFromGoldR();
+    if (silverResponse.statusCode != 200) {
+      throw Exception(
+        'Silver API error: ${silverResponse.statusCode}',
+      );
+    }
+
+    final goldJson =
+        jsonDecode(goldResponse.body);
+
+    final silverJson =
+        jsonDecode(silverResponse.body);
+
+    final goldLatest =
+        goldJson['latest'] as Map<String, dynamic>?;
+
+    final silverLatest =
+        silverJson['latest'] as Map<String, dynamic>?;
+
+    if (goldLatest == null) {
+      throw Exception(
+        'Gold price data পাওয়া যায়নি',
+      );
+    }
+
+    if (silverLatest == null) {
+      throw Exception(
+        'Silver price data পাওয়া যায়নি',
+      );
+    }
+
+    final newGold22 =
+        _toDouble(goldLatest['k22']);
+
+    final newGold21 =
+        _toDouble(goldLatest['k21']);
+
+    final newGold18 =
+        _toDouble(goldLatest['k18']);
+
+    final newSilver22 =
+        _toDouble(silverLatest['k22']);
+
+    final newSilver21 =
+        _toDouble(silverLatest['k21']);
+
+    final newSilver18 =
+        _toDouble(silverLatest['k18']);
+
+    if (newGold22 <= 0 ||
+        newGold21 <= 0 ||
+        newGold18 <= 0) {
+      throw Exception(
+        'Gold price invalid',
+      );
+    }
+
+    if (newSilver22 <= 0 ||
+        newSilver21 <= 0 ||
+        newSilver18 <= 0) {
+      throw Exception(
+        'Silver price invalid',
+      );
+    }
+
+    // API rate = per gram
+    // আমরা per gram হিসেবেই save করছি।
+
+    gold22 = newGold22;
+    gold21 = newGold21;
+    gold18 = newGold18;
+
+    silver22 = newSilver22;
+    silver21 = newSilver21;
+    silver18 = newSilver18;
+
+    lastUpdated =
+        goldJson['lastUpdate']?.toString() ?? '';
+
+    if (lastUpdated.isEmpty) {
+      lastUpdated =
+          silverJson['lastUpdate']?.toString() ?? '';
+    }
+
+    // --------------------------------------------------------
+    // Save locally
+    // --------------------------------------------------------
+
+    await prefs.setDouble(
+      'gold22',
+      gold22,
+    );
+
+    await prefs.setDouble(
+      'gold21',
+      gold21,
+    );
+
+    await prefs.setDouble(
+      'gold18',
+      gold18,
+    );
+
+    await prefs.setDouble(
+      'silver22',
+      silver22,
+    );
+
+    await prefs.setDouble(
+      'silver21',
+      silver21,
+    );
+
+    await prefs.setDouble(
+      'silver18',
+      silver18,
+    );
+
+    await prefs.setString(
+      'market_saved_date',
+      _todayKey(),
+    );
+
+    await prefs.setString(
+      'market_last_updated',
+      lastUpdated,
+    );
+  }
+
+  // ============================================================
+  // LOAD SAVED DATA
+  // ============================================================
+
+  void _loadSavedData(
+    SharedPreferences prefs,
+  ) {
+    gold22 = prefs.getDouble('gold22') ?? 0;
+    gold21 = prefs.getDouble('gold21') ?? 0;
+    gold18 = prefs.getDouble('gold18') ?? 0;
+
+    silver22 =
+        prefs.getDouble('silver22') ?? 0;
+    silver21 =
+        prefs.getDouble('silver21') ?? 0;
+    silver18 =
+        prefs.getDouble('silver18') ?? 0;
+
+    lastUpdated =
+        prefs.getString('market_last_updated') ?? '';
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+
+  double _toDouble(dynamic value) {
+    if (value == null) return 0;
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(
+          value.toString(),
+        ) ??
+        0;
   }
 
   String _todayKey() {
@@ -74,296 +330,92 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   }
 
   // ============================================================
-  // WEBVIEW
+  // CONVERSIONS
   // ============================================================
 
-  Future<void> _fetchFromGoldR() async {
-    if (_fetching) return;
-
-    _fetching = true;
-
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
-
-    final html = '''
-<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<script async src="https://www.goldr.org/price.ultra.js"></script>
-</head>
-
-<body>
-
-<i id="g22" data="22k-1bhori-dam"></i>
-<i id="g21" data="21k-1bhori-dam"></i>
-<i id="g18" data="18k-1bhori-dam"></i>
-
-<i id="s22" data="22k-1bhori-dam"></i>
-
-</body>
-</html>
-''';
-
-    try {
-      final controller = WebViewController();
-
-      await controller.setJavaScriptMode(
-        JavaScriptMode.unrestricted,
-      );
-
-      await controller.setBackgroundColor(
-        Colors.white,
-      );
-
-      await controller.setNavigationDelegate(
-        NavigationDelegate(
-          onWebResourceError: (error) {
-            // এখানে error দেখাব না।
-            // Script load হতে সময় লাগতে পারে।
-          },
-        ),
-      );
-
-      _controller = controller;
-
-      await controller.loadHtmlString(html);
-
-      // GoldR script-এর জন্য কিছু সময় অপেক্ষা
-      await Future.delayed(
-        const Duration(seconds: 7),
-      );
-
-      final result = await controller.runJavaScriptReturningResult(
-        '''
-(function() {
-  function getValue(id) {
-    var el = document.getElementById(id);
-    if (!el) return "";
-    return (el.innerText || el.textContent || "").trim();
+  double _perBhori(double perGram) {
+    return perGram * gramsPerBhori;
   }
 
-  return JSON.stringify({
-    g22: getValue("g22"),
-    g21: getValue("g21"),
-    g18: getValue("g18")
-  });
-})();
-''',
-      );
+  double _perAna(double perBhori) {
+    return perBhori / anaPerBhori;
+  }
 
-      String jsonText = result.toString();
+  double _perRoti(double perBhori) {
+    return perBhori / rotiPerBhori;
+  }
 
-      // WebView result অনেক সময় quoted JSON হিসেবে আসে
-      if (jsonText.startsWith('"') &&
-          jsonText.endsWith('"')) {
-        try {
-          jsonText = jsonDecode(jsonText);
-        } catch (_) {}
-      }
+  double _perGram(double perGram) {
+    return perGram;
+  }
 
-      final decoded = jsonDecode(jsonText);
-
-      final g22 = _extractNumber(
-        decoded['g22']?.toString() ?? '',
-      );
-
-      final g21 = _extractNumber(
-        decoded['g21']?.toString() ?? '',
-      );
-
-      final g18 = _extractNumber(
-        decoded['g18']?.toString() ?? '',
-      );
-
-      // অন্তত একটি rate পেলেই success
-      if (g22.isEmpty &&
-          g21.isEmpty &&
-          g18.isEmpty) {
-        throw Exception(
-          'GoldR থেকে price পাওয়া যায়নি',
-        );
-      }
-
-      await _savePrices(
-        g22: g22,
-        g21: g21,
-        g18: g18,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _fetching = false;
-        _error = '';
-      });
-    } catch (e) {
-      // আজকের নতুন rate না পেলে আগের saved rate ব্যবহার
-      final prefs = await SharedPreferences.getInstance();
-
-      final savedJson =
-          prefs.getString('market_prices');
-
-      if (savedJson != null) {
-        try {
-          final decoded = jsonDecode(savedJson);
-
-          if (decoded is Map) {
-            setState(() {
-              _prices =
-                  Map<String, dynamic>.from(decoded);
-              _loading = false;
-              _fetching = false;
-              _error =
-                  'নতুন বাজার দর পাওয়া যায়নি। '
-                  'সর্বশেষ সংরক্ষিত দর দেখানো হচ্ছে।';
-            });
-
-            return;
-          }
-        } catch (_) {}
-      }
-
-      if (!mounted) return;
-
-      setState(() {
-        _loading = false;
-        _fetching = false;
-        _error =
-            'আজকের বাজারের দাম পাওয়া যাচ্ছে না।\n\n'
-            'ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।';
-      });
-    }
+  // Old gold = 18% deduction
+  double _oldGold(double currentPrice) {
+    return currentPrice * 0.82;
   }
 
   // ============================================================
-  // SAVE
+  // FORMAT
   // ============================================================
 
-  Future<void> _savePrices({
-    required String g22,
-    required String g21,
-    required String g18,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    final data = {
-      'date': _todayKey(),
-      'g22': g22,
-      'g21': g21,
-      'g18': g18,
-    };
-
-    await prefs.setString(
-      'market_prices',
-      jsonEncode(data),
-    );
-
-    await prefs.setString(
-      'market_date',
-      _todayKey(),
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      _prices = data;
-    });
-  }
-
-  // ============================================================
-  // NUMBER CLEANER
-  // ============================================================
-
-  String _extractNumber(String value) {
-    if (value.trim().isEmpty) {
-      return '';
-    }
-
-    String text = value.trim();
-
-    const bangla = '০১২৩৪৫৬৭৮৯';
-    const english = '0123456789';
-
-    for (int i = 0; i < bangla.length; i++) {
-      text = text.replaceAll(
-        bangla[i],
-        english[i],
-      );
-    }
-
-    // GoldR price হতে পারে:
-    // ৳২২৯,০৮১
-    // ৳ 229,081
-    // 229081
-
-    final match = RegExp(
-      r'([0-9]+(?:,[0-9]{3})*)',
-    ).firstMatch(text);
-
-    if (match == null) {
-      return '';
-    }
-
-    return match
-            .group(1)
-            ?.replaceAll(',', '') ??
-        '';
-  }
-
-  // ============================================================
-  // CALCULATIONS
-  // ============================================================
-
-  double _number(String key) {
-    final value = _prices[key];
-
-    if (value == null) {
-      return 0;
-    }
-
-    return double.tryParse(
-          value.toString(),
-        ) ??
-        0;
-  }
-
-  double _ana(double bhori) {
-    return bhori / anaPerBhori;
-  }
-
-  double _roti(double bhori) {
-    return bhori / rotiPerBhori;
-  }
-
-  double _gram(double bhori) {
-    return bhori / gramPerBhori;
-  }
-
-  double _oldGold(double current) {
-    return current * 0.82;
-  }
-
-  // ============================================================
-  // FORMATTING
-  // ============================================================
-
-  String _formatNumber(
+  String _formatMoney(
     double value, {
-    int decimals = 0,
+    bool decimal = false,
   }) {
-    if (value == 0) {
+    if (value <= 0) {
       return 'তথ্য নেই';
     }
 
-    if (decimals == 0) {
-      return value.round().toString();
+    String text;
+
+    if (decimal) {
+      text = value.toStringAsFixed(2);
+    } else {
+      text = value.round().toString();
     }
 
-    return value.toStringAsFixed(decimals);
+    text = _addComma(text);
+
+    return '৳ ${_banglaDigits(text)}';
+  }
+
+  String _addComma(String value) {
+    final parts = value.split('.');
+
+    String integerPart = parts[0];
+
+    final isNegative =
+        integerPart.startsWith('-');
+
+    if (isNegative) {
+      integerPart =
+          integerPart.substring(1);
+    }
+
+    final buffer = StringBuffer();
+
+    for (int i = 0;
+        i < integerPart.length;
+        i++) {
+      if (i > 0 &&
+          (integerPart.length - i) % 3 == 0) {
+        buffer.write(',');
+      }
+
+      buffer.write(integerPart[i]);
+    }
+
+    String result = buffer.toString();
+
+    if (isNegative) {
+      result = '-$result';
+    }
+
+    if (parts.length > 1) {
+      result += '.${parts[1]}';
+    }
+
+    return result;
   }
 
   String _banglaDigits(String value) {
@@ -372,7 +424,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
     String result = value;
 
-    for (int i = 0; i < english.length; i++) {
+    for (int i = 0;
+        i < english.length;
+        i++) {
       result = result.replaceAll(
         english[i],
         bangla[i],
@@ -382,35 +436,32 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return result;
   }
 
-  String _price(double value) {
-    if (value == 0) {
-      return 'তথ্য নেই';
-    }
-
-    return '৳ ${_banglaDigits(
-      _formatNumber(value),
-    )}';
-  }
-
   // ============================================================
   // PRICE CARD
   // ============================================================
 
   Widget _priceCard({
     required String title,
-    required double bhori,
+    required double perGram,
     required Color color,
     required IconData icon,
+    bool showOldGold = false,
   }) {
+    final bhori = _perBhori(perGram);
+    final ana = _perAna(bhori);
+    final roti = _perRoti(bhori);
+    final gram = _perGram(perGram);
+
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(
-        bottom: 12,
-      ),
-      padding: const EdgeInsets.all(16),
+      margin:
+          const EdgeInsets.only(bottom: 12),
+      padding:
+          const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius:
+            BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
@@ -419,86 +470,158 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: color,
-              size: 28,
-            ),
-          ),
-
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color:
+                      color.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 27,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                 ),
+              ),
+            ],
+          ),
 
-                const SizedBox(height: 5),
+          const SizedBox(height: 13),
 
-                Text(
-                  '১ ভরি',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
-                ),
+          _priceRow(
+            'প্রতি ভরি',
+            _formatMoney(bhori),
+            true,
+          ),
 
-                const SizedBox(height: 6),
+          _priceRow(
+            'প্রতি আনা',
+            _formatMoney(ana),
+            false,
+          ),
 
-                Text(
-                  _price(bhori),
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
+          _priceRow(
+            'প্রতি রতি',
+            _formatMoney(roti),
+            false,
+          ),
 
-                if (bhori > 0) ...[
-                  const SizedBox(height: 8),
+          _priceRow(
+            'প্রতি গ্রাম',
+            _formatMoney(gram),
+            false,
+          ),
 
-                  Text(
-                    '১ আনা: ${_price(_ana(bhori))}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
+          if (showOldGold) ...[
+            const Divider(
+              height: 22,
+            ),
 
-                  Text(
-                    '১ রতি: ${_price(_roti(bhori))}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
+            _priceRow(
+              'পুরাতন সোনা (১৮% deduction)',
+              _formatMoney(
+                _oldGold(bhori),
+              ),
+              true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-                  Text(
-                    '১ গ্রাম: ${_price(_gram(bhori))}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ],
-              ],
+  Widget _priceRow(
+    String label,
+    String value,
+    bool highlight,
+  ) {
+    return Padding(
+      padding:
+          const EdgeInsets.symmetric(
+        vertical: 4,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize:
+                    highlight ? 14 : 12,
+                color: highlight
+                    ? Colors.black87
+                    : Colors.black54,
+                fontWeight: highlight
+                    ? FontWeight.w600
+                    : FontWeight.normal,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize:
+                  highlight ? 17 : 13,
+              fontWeight:
+                  highlight
+                      ? FontWeight.bold
+                      : FontWeight.w500,
+              color: highlight
+                  ? const Color(
+                      0xFF8B6508,
+                    )
+                  : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(
+    String title,
+    IconData icon,
+  ) {
+    return Padding(
+      padding:
+          const EdgeInsets.only(
+        top: 7,
+        bottom: 12,
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color:
+                const Color(0xFF8B6508),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 21,
+              fontWeight:
+                  FontWeight.bold,
+              color:
+                  Color(0xFF6B0000),
             ),
           ),
         ],
@@ -507,32 +630,30 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   }
 
   // ============================================================
-  // BUILD
+  // UI
   // ============================================================
 
   @override
   Widget build(BuildContext context) {
-    final g22 = _number('g22');
-    final g21 = _number('g21');
-    final g18 = _number('g18');
-
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'আজকের বাজার',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontWeight:
+                FontWeight.bold,
           ),
         ),
         backgroundColor:
             const Color(0xFFFF3B30),
-        iconTheme: const IconThemeData(
+        iconTheme:
+            const IconThemeData(
           color: Colors.white,
         ),
       ),
 
-      body: _loading
+      body: isLoading
           ? const Center(
               child: Column(
                 mainAxisAlignment:
@@ -543,339 +664,251 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   Text(
                     'আজকের বাজারের দাম লোড হচ্ছে...',
                     style: TextStyle(
-                      color: Colors.black54,
+                      color:
+                          Colors.black54,
                     ),
                   ),
                 ],
               ),
             )
+          : RefreshIndicator(
+              onRefresh: () =>
+                  _loadPrices(
+                forceRefresh: true,
+              ),
+              child: ListView(
+                physics:
+                    const AlwaysScrollableScrollPhysics(),
+                padding:
+                    const EdgeInsets.all(14),
+                children: [
+                  if (showingCachedData)
+                    Container(
+                      width:
+                          double.infinity,
+                      margin:
+                          const EdgeInsets.only(
+                        bottom: 12,
+                      ),
+                      padding:
+                          const EdgeInsets.all(
+                        12,
+                      ),
+                      decoration:
+                          BoxDecoration(
+                        color: Colors.orange
+                            .withOpacity(
+                          0.12,
+                        ),
+                        borderRadius:
+                            BorderRadius
+                                .circular(
+                          12,
+                        ),
+                      ),
+                      child: Text(
+                        errorMessage,
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          fontSize: 12,
+                          color:
+                              Colors.orange,
+                        ),
+                      ),
+                    ),
 
-          : _error.isNotEmpty &&
-                  _prices.isEmpty
-              ? Center(
-                  child: Padding(
+                  Container(
+                    width:
+                        double.infinity,
                     padding:
-                        const EdgeInsets.all(25),
-                    child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
+                        const EdgeInsets.all(
+                      18,
+                    ),
+                    margin:
+                        const EdgeInsets.only(
+                      bottom: 16,
+                    ),
+                    decoration:
+                        BoxDecoration(
+                      gradient:
+                          const LinearGradient(
+                        colors: [
+                          Color(0xFF6B0000),
+                          Color(0xFF9E1B1B),
+                        ],
+                      ),
+                      borderRadius:
+                          BorderRadius.circular(
+                        16,
+                      ),
+                    ),
+                    child:
+                        const Column(
                       children: [
-                        const Icon(
-                          Icons.cloud_off,
-                          size: 65,
-                          color: Colors.red,
+                        Icon(
+                          Icons.storefront,
+                          color:
+                              Color(0xFFFFD700),
+                          size: 38,
                         ),
-
-                        const SizedBox(height: 15),
-
+                        SizedBox(height: 7),
                         Text(
-                          _error,
-                          textAlign:
-                              TextAlign.center,
+                          'আজকের বাজার',
                           style:
-                              const TextStyle(
-                            color: Colors.red,
-                            fontSize: 15,
+                              TextStyle(
+                            color:
+                                Color(
+                              0xFFFFD700,
+                            ),
+                            fontSize: 24,
+                            fontWeight:
+                                FontWeight.bold,
                           ),
                         ),
-
-                        const SizedBox(height: 20),
-
-                        ElevatedButton.icon(
-                          onPressed:
-                              _fetchFromGoldR,
-                          icon: const Icon(
-                            Icons.refresh,
-                          ),
-                          label: const Text(
-                            'আবার চেষ্টা করুন',
+                        SizedBox(height: 4),
+                        Text(
+                          'সর্বশেষ সোনা ও রুপার বাজার দর',
+                          style:
+                              TextStyle(
+                            color:
+                                Colors.white,
+                            fontSize: 13,
                           ),
                         ),
                       ],
                     ),
                   ),
-                )
 
-              : RefreshIndicator(
-                  onRefresh: _fetchFromGoldR,
-
-                  child: ListView(
-                    physics:
-                        const AlwaysScrollableScrollPhysics(),
-
-                    padding:
-                        const EdgeInsets.all(14),
-
-                    children: [
-                      if (_error.isNotEmpty)
-                        Container(
-                          width:
-                              double.infinity,
-                          margin:
-                              const EdgeInsets.only(
-                            bottom: 12,
-                          ),
-                          padding:
-                              const EdgeInsets.all(12),
-                          decoration:
-                              BoxDecoration(
-                            color:
-                                Colors.orange
-                                    .withOpacity(
-                              0.12,
-                            ),
-                            borderRadius:
-                                BorderRadius
-                                    .circular(
-                              12,
-                            ),
-                          ),
-                          child: Text(
-                            _error,
-                            textAlign:
-                                TextAlign.center,
-                            style:
-                                const TextStyle(
-                              fontSize: 12,
-                              color:
-                                  Colors.orange,
-                            ),
-                          ),
-                        ),
-
-                      Container(
-                        width:
-                            double.infinity,
-                        padding:
-                            const EdgeInsets.all(
-                          18,
-                        ),
-                        margin:
-                            const EdgeInsets.only(
-                          bottom: 16,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          gradient:
-                              const LinearGradient(
-                            colors: [
-                              Color(0xFF6B0000),
-                              Color(0xFF9E1B1B),
-                            ],
-                          ),
-                          borderRadius:
-                              BorderRadius.circular(
-                            16,
-                          ),
-                        ),
-                        child:
-                            const Column(
-                          children: [
-                            Icon(
-                              Icons.storefront,
-                              color:
-                                  Color(0xFFFFD700),
-                              size: 38,
-                            ),
-                            SizedBox(height: 7),
-                            Text(
-                              'আজকের বাজার',
-                              style:
-                                  TextStyle(
-                                color:
-                                    Color(
-                                  0xFFFFD700,
-                                ),
-                                fontSize: 24,
-                                fontWeight:
-                                    FontWeight
-                                        .bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'সর্বশেষ বাজার দর',
-                              style:
-                                  TextStyle(
-                                color:
-                                    Colors.white,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const Padding(
-                        padding:
-                            EdgeInsets.only(
-                          top: 5,
-                          bottom: 12,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons
-                                  .auto_awesome,
-                              color:
-                                  Color(
-                                0xFF8B6508,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'সোনার দাম',
-                              style:
-                                  TextStyle(
-                                fontSize: 21,
-                                fontWeight:
-                                    FontWeight
-                                        .bold,
-                                color:
-                                    Color(
-                                  0xFF6B0000,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      _priceCard(
-                        title:
-                            '২২ ক্যারেট সোনা',
-                        bhori: g22,
-                        color:
-                            Colors.amber.shade800,
-                        icon: Icons
-                            .workspace_premium,
-                      ),
-
-                      _priceCard(
-                        title:
-                            '২১ ক্যারেট সোনা',
-                        bhori: g21,
-                        color:
-                            Colors.amber.shade800,
-                        icon: Icons
-                            .workspace_premium,
-                      ),
-
-                      _priceCard(
-                        title:
-                            '১৮ ক্যারেট সোনা',
-                        bhori: g18,
-                        color:
-                            Colors.amber.shade800,
-                        icon: Icons
-                            .workspace_premium,
-                      ),
-
-                      const SizedBox(height: 10),
-
-                      if (g22 > 0)
-                        Container(
-                          width:
-                              double.infinity,
-                          padding:
-                              const EdgeInsets
-                                  .all(16),
-                          margin:
-                              const EdgeInsets
-                                  .only(
-                            bottom: 12,
-                          ),
-                          decoration:
-                              BoxDecoration(
-                            color: Colors
-                                .brown
-                                .withOpacity(
-                              0.06,
-                            ),
-                            borderRadius:
-                                BorderRadius
-                                    .circular(
-                              14,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment
-                                    .start,
-                            children: [
-                              const Text(
-                                'পুরাতন সোনা',
-                                style:
-                                    TextStyle(
-                                  fontSize: 18,
-                                  fontWeight:
-                                      FontWeight
-                                          .bold,
-                                ),
-                              ),
-                              const SizedBox(
-                                height: 7,
-                              ),
-                              Text(
-                                '২২K Old Gold: '
-                                '${_price(
-                                  _oldGold(g22),
-                                )} / ভরি',
-                                style:
-                                    const TextStyle(
-                                  fontSize: 15,
-                                ),
-                              ),
-                              const SizedBox(
-                                height: 4,
-                              ),
-                              const Text(
-                                '১৮% deduction বাদ দিয়ে হিসাব করা হয়েছে।',
-                                style:
-                                    TextStyle(
-                                  fontSize: 11,
-                                  color:
-                                      Colors.black54,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      const SizedBox(height: 10),
-
-                      const Center(
-                        child: Text(
-                          '১ ভরি = ১৬ আনা = ৯৬ রতি = ১১.৬৬৪ গ্রাম',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color:
-                                Colors.black54,
-                            fontWeight:
-                                FontWeight.w500,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      const Center(
-                        child: Text(
-                          'তথ্যসূত্র: GoldR.org',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color:
-                                Colors.black45,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(
-                        height: 20,
-                      ),
-                    ],
+                  _sectionTitle(
+                    'সোনার দাম',
+                    Icons.auto_awesome,
                   ),
-                ),
+
+                  _priceCard(
+                    title:
+                        '২২ ক্যারেট সোনা',
+                    perGram: gold22,
+                    color:
+                        Colors.amber.shade800,
+                    icon: Icons
+                        .workspace_premium,
+                    showOldGold: true,
+                  ),
+
+                  _priceCard(
+                    title:
+                        '২১ ক্যারেট সোনা',
+                    perGram: gold21,
+                    color:
+                        Colors.amber.shade800,
+                    icon: Icons
+                        .workspace_premium,
+                  ),
+
+                  _priceCard(
+                    title:
+                        '১৮ ক্যারেট সোনা',
+                    perGram: gold18,
+                    color:
+                        Colors.amber.shade800,
+                    icon: Icons
+                        .workspace_premium,
+                  ),
+
+                  const SizedBox(height: 8),
+
+                  _sectionTitle(
+                    'রুপার দাম',
+                    Icons.circle_outlined,
+                  ),
+
+                  _priceCard(
+                    title:
+                        '২২ ক্যারেট রুপা',
+                    perGram: silver22,
+                    color:
+                        Colors.blueGrey,
+                    icon:
+                        Icons.circle_outlined,
+                  ),
+
+                  _priceCard(
+                    title:
+                        '২১ ক্যারেট রুপা',
+                    perGram: silver21,
+                    color:
+                        Colors.blueGrey,
+                    icon:
+                        Icons.circle_outlined,
+                  ),
+
+                  _priceCard(
+                    title:
+                        '১৮ ক্যারেট রুপা',
+                    perGram: silver18,
+                    color:
+                        Colors.blueGrey,
+                    icon:
+                        Icons.circle_outlined,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  const Center(
+                    child: Text(
+                      '১ ভরি = ১৬ আনা = ৯৬ রতি = ১১.৬৬৪ গ্রাম',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            Colors.black54,
+                        fontWeight:
+                            FontWeight.w500,
+                      ),
+                    ),
+                  ),
+
+                  if (lastUpdated.isNotEmpty) ...[
+                    const SizedBox(
+                      height: 7,
+                    ),
+                    Text(
+                      'সর্বশেষ data update: $lastUpdated',
+                      textAlign:
+                          TextAlign.center,
+                      style:
+                          const TextStyle(
+                        fontSize: 11,
+                        color:
+                            Colors.black45,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(
+                    height: 7,
+                  ),
+
+                  const Center(
+                    child: Text(
+                      'Price source: Gold Price Bangladesh (BAJUS-based)',
+                      textAlign:
+                          TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color:
+                            Colors.black38,
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(
+                    height: 20,
+                  ),
+                ],
+              ),
+            ),
     );
   }
 }
