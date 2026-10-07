@@ -11,206 +11,123 @@ class TodaysMarketPage extends StatefulWidget {
 }
 
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
+  static const String _marketUrl =
+      'https://raw.githubusercontent.com/pkdewu-dot/Paroma-Jewellery/main/market.json';
+
   bool _loading = true;
   bool _refreshing = false;
-
-  String? _goldError;
-  String? _silverError;
+  String? _error;
   String? _lastUpdate;
 
-  double? gold22;
-  double? gold21;
-  double? gold18;
+  double? _gold22;
+  double? _gold21;
+  double? _gold18;
 
-  double? silver22;
-  double? silver21;
-  double? silver18;
-
-  static const String goldApi =
-      'https://gold-price.bd/api/gold/latest.json';
-
-  static const String silverApi =
-      'https://gold-price.bd/api/silver/latest.json';
+  double? _silver22;
+  double? _silver21;
+  double? _silver18;
 
   @override
   void initState() {
     super.initState();
-    _loadPrices();
+    _loadMarket();
   }
 
-  Future<void> _loadPrices() async {
+  Future<void> _loadMarket({bool manualRefresh = false}) async {
     if (mounted) {
       setState(() {
-        _loading = true;
-        _goldError = null;
-        _silverError = null;
-      });
-    }
-
-    await Future.wait([
-      _loadGold(),
-      _loadSilver(),
-    ]);
-
-    if (mounted) {
-      setState(() {
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _refreshPrices() async {
-    if (_refreshing) return;
-
-    setState(() {
-      _refreshing = true;
-      _goldError = null;
-      _silverError = null;
-    });
-
-    await Future.wait([
-      _loadGold(),
-      _loadSilver(),
-    ]);
-
-    if (mounted) {
-      setState(() {
-        _refreshing = false;
-      });
-    }
-  }
-
-  Future<void> _loadGold() async {
-    try {
-      final uri = Uri.parse(
-        '$goldApi?refresh=${DateTime.now().millisecondsSinceEpoch}',
-      );
-
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Paroma-Jewellery-App',
-        },
-      ).timeout(
-        const Duration(seconds: 20),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'Gold API status: ${response.statusCode}',
-        );
-      }
-
-      final body = response.body.trim();
-
-      if (body.isEmpty) {
-        throw Exception('Gold API empty response');
-      }
-
-      final data = jsonDecode(body);
-
-      final latest = data['latest'];
-
-      if (latest == null) {
-        throw Exception('Gold latest data পাওয়া যায়নি');
-      }
-
-      final k22 = _toDouble(latest['k22']);
-      final k21 = _toDouble(latest['k21']);
-      final k18 = _toDouble(latest['k18']);
-
-      if (k22 == null || k21 == null || k18 == null) {
-        throw Exception('Gold 22K/21K/18K data পাওয়া যায়নি');
-      }
-
-      final update = data['lastUpdate']?.toString();
-
-      if (!mounted) return;
-
-      setState(() {
-        gold22 = k22;
-        gold21 = k21;
-        gold18 = k18;
-
-        if (update != null && update.isNotEmpty) {
-          _lastUpdate = update;
+        if (!manualRefresh) {
+          _loading = true;
         }
 
-        _goldError = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
+        if (manualRefresh) {
+          _refreshing = true;
+        }
 
-      setState(() {
-        _goldError = 'Gold data পাওয়া যায়নি';
+        _error = null;
       });
     }
-  }
 
-  Future<void> _loadSilver() async {
     try {
       final uri = Uri.parse(
-        '$silverApi?refresh=${DateTime.now().millisecondsSinceEpoch}',
+        '$_marketUrl?ts=${DateTime.now().millisecondsSinceEpoch}',
       );
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Paroma-Jewellery-App',
-        },
-      ).timeout(
-        const Duration(seconds: 20),
-      );
+      final response = await http
+          .get(
+            uri,
+            headers: const {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+            },
+          )
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode != 200) {
         throw Exception(
-          'Silver API status: ${response.statusCode}',
+          'Market file status: ${response.statusCode}',
         );
       }
 
       final body = response.body.trim();
 
       if (body.isEmpty) {
-        throw Exception('Silver API empty response');
+        throw Exception('Market file empty');
       }
 
       final data = jsonDecode(body);
 
-      final latest = data['latest'];
+      final gold = data['gold'];
+      final silver = data['silver'];
 
-      if (latest == null) {
-        throw Exception('Silver latest data পাওয়া যায়নি');
-      }
+      final g22 = _number(gold?['k22']);
+      final g21 = _number(gold?['k21']);
+      final g18 = _number(gold?['k18']);
 
-      final k22 = _toDouble(latest['k22']);
-      final k21 = _toDouble(latest['k21']);
-      final k18 = _toDouble(latest['k18']);
+      final s22 = _number(silver?['k22']);
+      final s21 = _number(silver?['k21']);
+      final s18 = _number(silver?['k18']);
 
-      if (k22 == null || k21 == null || k18 == null) {
-        throw Exception('Silver 22K/21K/18K data পাওয়া যায়নি');
+      if (g22 == null ||
+          g21 == null ||
+          g18 == null ||
+          s22 == null ||
+          s21 == null ||
+          s18 == null) {
+        throw Exception('Incomplete market data');
       }
 
       if (!mounted) return;
 
       setState(() {
-        silver22 = k22;
-        silver21 = k21;
-        silver18 = k18;
+        _gold22 = g22;
+        _gold21 = g21;
+        _gold18 = g18;
 
-        _silverError = null;
+        _silver22 = s22;
+        _silver21 = s21;
+        _silver18 = s18;
+
+        _lastUpdate = data['lastUpdate']?.toString();
+
+        _loading = false;
+        _refreshing = false;
+        _error = null;
       });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
-        _silverError = 'Silver data পাওয়া যায়নি';
+        _loading = false;
+        _refreshing = false;
+        _error =
+            'আজকের বাজারের দাম পাওয়া যাচ্ছে না। আবার চেষ্টা করুন।';
       });
     }
   }
 
-  double? _toDouble(dynamic value) {
+  double? _number(dynamic value) {
     if (value is num) {
       return value.toDouble();
     }
@@ -233,28 +150,28 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   // 1 ভরি = 96 রতি
   // 1 রতি = 10 পয়েন্ট
 
-  double _bhori(double gramPrice) {
-    return gramPrice * 11.664;
+  double _bhori(double gram) {
+    return gram * 11.664;
   }
 
-  double _ana(double gramPrice) {
-    return _bhori(gramPrice) / 16;
+  double _ana(double gram) {
+    return _bhori(gram) / 16;
   }
 
-  double _roti(double gramPrice) {
-    return _bhori(gramPrice) / 96;
+  double _roti(double gram) {
+    return _bhori(gram) / 96;
   }
 
-  double _point(double gramPrice) {
-    return _bhori(gramPrice) / 960;
+  double _point(double gram) {
+    return _bhori(gram) / 960;
   }
 
-  Widget _sectionTitle(String title) {
+  Widget _title(String text) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          title,
+          text,
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -271,11 +188,16 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _tableHeader() {
+  Widget _header() {
+    const style = TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 12,
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: 10,
-        horizontal: 5,
+        horizontal: 4,
       ),
       decoration: BoxDecoration(
         color: Colors.grey.shade200,
@@ -288,10 +210,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'ক্যারেট',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
           Expanded(
@@ -299,10 +218,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'ভরি',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
           Expanded(
@@ -310,10 +226,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'আনা',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
           Expanded(
@@ -321,10 +234,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'রতি',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
           Expanded(
@@ -332,10 +242,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'পয়েন্ট',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
           Expanded(
@@ -343,10 +250,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'গ্রাম',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-              ),
+              style: style,
             ),
           ),
         ],
@@ -354,23 +258,18 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _priceRow({
-    required String karat,
-    required double gramPrice,
+  Widget _row(
+    String karat,
+    double gram, {
     bool oldGold = false,
   }) {
     final multiplier = oldGold ? 0.82 : 1.0;
-
-    final bhori = _bhori(gramPrice) * multiplier;
-    final ana = _ana(gramPrice) * multiplier;
-    final roti = _roti(gramPrice) * multiplier;
-    final point = _point(gramPrice) * multiplier;
 
     return Container(
       margin: const EdgeInsets.only(top: 7),
       padding: const EdgeInsets.symmetric(
         vertical: 11,
-        horizontal: 3,
+        horizontal: 2,
       ),
       decoration: BoxDecoration(
         border: Border.all(
@@ -394,7 +293,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Expanded(
             flex: 3,
             child: Text(
-              _money(bhori),
+              _money(_bhori(gram) * multiplier),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10),
             ),
@@ -402,7 +301,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Expanded(
             flex: 3,
             child: Text(
-              _money(ana),
+              _money(_ana(gram) * multiplier),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10),
             ),
@@ -410,7 +309,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Expanded(
             flex: 3,
             child: Text(
-              _money(roti),
+              _money(_roti(gram) * multiplier),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10),
             ),
@@ -418,7 +317,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Expanded(
             flex: 3,
             child: Text(
-              _money(point),
+              _money(_point(gram) * multiplier),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10),
             ),
@@ -426,7 +325,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Expanded(
             flex: 3,
             child: Text(
-              _money(gramPrice * multiplier),
+              _money(gram * multiplier),
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10),
             ),
@@ -436,69 +335,24 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _loadingBox(String text) {
-    return Container(
-      padding: const EdgeInsets.all(25),
-      child: Column(
-        children: [
-          const CircularProgressIndicator(),
-          const SizedBox(height: 15),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _goldSection() {
-    if (gold22 == null ||
-        gold21 == null ||
-        gold18 == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.cloud_off,
-              size: 45,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _goldError ?? 'Gold price পাওয়া যাচ্ছে না',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+  Widget _gold() {
+    if (_gold22 == null ||
+        _gold21 == null ||
+        _gold18 == null) {
+      return _unavailable(
+        'সোনার দাম পাওয়া যাচ্ছে না',
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('সোনার দাম'),
-        _tableHeader(),
+        _title('সোনার দাম'),
+        _header(),
 
-        _priceRow(
-          karat: '22K',
-          gramPrice: gold22!,
-        ),
-
-        _priceRow(
-          karat: '21K',
-          gramPrice: gold21!,
-        ),
-
-        _priceRow(
-          karat: '18K',
-          gramPrice: gold18!,
-        ),
+        _row('22K', _gold22!),
+        _row('21K', _gold21!),
+        _row('18K', _gold18!),
 
         const SizedBox(height: 14),
 
@@ -523,74 +377,70 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
         const SizedBox(height: 12),
 
-        _sectionTitle('পুরাতন সোনার দাম'),
-        _tableHeader(),
+        _title('পুরাতন সোনার দাম'),
+        _header(),
 
-        _priceRow(
-          karat: '22K',
-          gramPrice: gold22!,
+        _row(
+          '22K',
+          _gold22!,
           oldGold: true,
         ),
 
-        _priceRow(
-          karat: '21K',
-          gramPrice: gold21!,
+        _row(
+          '21K',
+          _gold21!,
           oldGold: true,
         ),
 
-        _priceRow(
-          karat: '18K',
-          gramPrice: gold18!,
+        _row(
+          '18K',
+          _gold18!,
           oldGold: true,
         ),
       ],
     );
   }
 
-  Widget _silverSection() {
-    if (silver22 == null ||
-        silver21 == null ||
-        silver18 == null) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.cloud_off,
-              size: 45,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _silverError ?? 'Silver price পাওয়া যাচ্ছে না',
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+  Widget _silver() {
+    if (_silver22 == null ||
+        _silver21 == null ||
+        _silver18 == null) {
+      return _unavailable(
+        'রুপার দাম পাওয়া যাচ্ছে না',
       );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle('রুপার দাম'),
-        _tableHeader(),
+        _title('রুপার দাম'),
+        _header(),
 
-        _priceRow(
-          karat: '22K',
-          gramPrice: silver22!,
-        ),
-
-        _priceRow(
-          karat: '21K',
-          gramPrice: silver21!,
-        ),
-
-        _priceRow(
-          karat: '18K',
-          gramPrice: silver18!,
-        ),
+        _row('22K', _silver22!),
+        _row('21K', _silver21!),
+        _row('18K', _silver18!),
       ],
+    );
+  }
+
+  Widget _unavailable(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.cloud_off,
+            size: 42,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -609,7 +459,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           IconButton(
             onPressed: _refreshing
                 ? null
-                : _refreshPrices,
+                : () => _loadMarket(
+                      manualRefresh: true,
+                    ),
             icon: _refreshing
                 ? const SizedBox(
                     width: 20,
@@ -623,25 +475,38 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         ],
       ),
       body: _loading
-          ? _loadingBox(
-              'আজকের বাজারের দাম লোড হচ্ছে...',
+          ? const Center(
+              child: CircularProgressIndicator(),
             )
           : RefreshIndicator(
-              onRefresh: _refreshPrices,
+              onRefresh: () => _loadMarket(
+                manualRefresh: true,
+              ),
               child: ListView(
                 physics:
                     const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 children: [
-                  _goldSection(),
+                  _gold(),
 
                   const SizedBox(height: 28),
 
-                  _silverSection(),
+                  _silver(),
 
-                  const SizedBox(height: 20),
+                  if (_error != null) ...[
+                    const SizedBox(height: 15),
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
 
-                  if (_lastUpdate != null)
+                  if (_lastUpdate != null) ...[
+                    const SizedBox(height: 15),
                     Text(
                       'সর্বশেষ আপডেট: $_lastUpdate',
                       textAlign: TextAlign.center,
@@ -650,6 +515,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                         color: Colors.grey,
                       ),
                     ),
+                  ],
 
                   const SizedBox(height: 8),
 
