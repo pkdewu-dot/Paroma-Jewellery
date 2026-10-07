@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 class TodaysMarketPage extends StatefulWidget {
   const TodaysMarketPage({super.key});
@@ -14,7 +13,9 @@ class TodaysMarketPage extends StatefulWidget {
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool _loading = true;
   bool _refreshing = false;
-  String? _error;
+
+  String? _goldError;
+  String? _silverError;
   String? _lastUpdate;
 
   double? gold22;
@@ -37,253 +38,194 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     _loadPrices();
   }
 
-  String _todayKey() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  }
-
-  Future<void> _loadPrices({bool forceRefresh = false}) async {
-    if (!forceRefresh) {
-      final loaded = await _loadCache();
-
-      if (loaded) {
-        if (mounted) {
-          setState(() {
-            _loading = false;
-          });
-        }
-
-        // Cache দেখানোর পর quietly online update check করবে
-        _fetchOnlinePrices(updateUI: false);
-        return;
-      }
-    }
-
+  Future<void> _loadPrices() async {
     if (mounted) {
       setState(() {
         _loading = true;
-        _error = null;
+        _goldError = null;
+        _silverError = null;
       });
     }
 
-    await _fetchOnlinePrices(updateUI: true);
-  }
+    await Future.wait([
+      _loadGold(),
+      _loadSilver(),
+    ]);
 
-  Future<bool> _loadCache() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      final savedDate = prefs.getString('market_date');
-
-      if (savedDate == null || savedDate != _todayKey()) {
-        return false;
-      }
-
-      final g22 = prefs.getDouble('gold22');
-      final g21 = prefs.getDouble('gold21');
-      final g18 = prefs.getDouble('gold18');
-
-      final s22 = prefs.getDouble('silver22');
-      final s21 = prefs.getDouble('silver21');
-      final s18 = prefs.getDouble('silver18');
-
-      if (g22 == null ||
-          g21 == null ||
-          g18 == null ||
-          s22 == null ||
-          s21 == null ||
-          s18 == null) {
-        return false;
-      }
-
-      if (!mounted) return true;
-
+    if (mounted) {
       setState(() {
-        gold22 = g22;
-        gold21 = g21;
-        gold18 = g18;
-
-        silver22 = s22;
-        silver21 = s21;
-        silver18 = s18;
-
-        _lastUpdate = prefs.getString('market_last_update');
-        _error = null;
-      });
-
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> _fetchOnlinePrices({required bool updateUI}) async {
-    try {
-      final goldResponse = await http
-          .get(Uri.parse(goldApi))
-          .timeout(const Duration(seconds: 15));
-
-      final silverResponse = await http
-          .get(Uri.parse(silverApi))
-          .timeout(const Duration(seconds: 15));
-
-      if (goldResponse.statusCode != 200) {
-        throw Exception(
-          'Gold API error: ${goldResponse.statusCode}',
-        );
-      }
-
-      if (silverResponse.statusCode != 200) {
-        throw Exception(
-          'Silver API error: ${silverResponse.statusCode}',
-        );
-      }
-
-      final goldData = jsonDecode(goldResponse.body);
-      final silverData = jsonDecode(silverResponse.body);
-
-      final newGold22 = _readPrice(goldData, 'k22');
-      final newGold21 = _readPrice(goldData, 'k21');
-      final newGold18 = _readPrice(goldData, 'k18');
-
-      final newSilver22 = _readPrice(silverData, 'k22');
-      final newSilver21 = _readPrice(silverData, 'k21');
-      final newSilver18 = _readPrice(silverData, 'k18');
-
-      if (newGold22 == null ||
-          newGold21 == null ||
-          newGold18 == null ||
-          newSilver22 == null ||
-          newSilver21 == null ||
-          newSilver18 == null) {
-        throw Exception('Price data পাওয়া যায়নি');
-      }
-
-      final goldLastUpdate = _readLastUpdate(goldData);
-
-      await _saveCache(
-        gold22: newGold22,
-        gold21: newGold21,
-        gold18: newGold18,
-        silver22: newSilver22,
-        silver21: newSilver21,
-        silver18: newSilver18,
-        lastUpdate: goldLastUpdate,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        gold22 = newGold22;
-        gold21 = newGold21;
-        gold18 = newGold18;
-
-        silver22 = newSilver22;
-        silver21 = newSilver21;
-        silver18 = newSilver18;
-
-        _lastUpdate = goldLastUpdate;
         _loading = false;
-        _refreshing = false;
-        _error = null;
       });
-    } catch (e) {
-      if (!mounted) return;
-
-      // যদি আগে থেকেই data থাকে, data রেখে শুধু warning দেখাবে।
-      if (gold22 != null &&
-          gold21 != null &&
-          gold18 != null &&
-          silver22 != null &&
-          silver21 != null &&
-          silver18 != null) {
-        setState(() {
-          _loading = false;
-          _refreshing = false;
-          _error = 'নতুন দাম আপডেট করা যায়নি। আগের সংরক্ষিত দাম দেখানো হচ্ছে।';
-        });
-      } else {
-        setState(() {
-          _loading = false;
-          _refreshing = false;
-          _error =
-              'আজকের বাজারের দাম পাওয়া যাচ্ছে না। আবার চেষ্টা করুন।';
-        });
-      }
     }
   }
 
-  double? _readPrice(dynamic data, String key) {
-    try {
-      final latest = data['latest'];
-
-      final value = latest[key];
-
-      if (value is num) {
-        return value.toDouble();
-      }
-
-      if (value is String) {
-        return double.tryParse(value.replaceAll(',', '').trim());
-      }
-    } catch (_) {}
-
-    return null;
-  }
-
-  String? _readLastUpdate(dynamic data) {
-    try {
-      final value = data['lastUpdate'];
-
-      if (value != null) {
-        return value.toString();
-      }
-    } catch (_) {}
-
-    return null;
-  }
-
-  Future<void> _saveCache({
-    required double gold22,
-    required double gold21,
-    required double gold18,
-    required double silver22,
-    required double silver21,
-    required double silver18,
-    String? lastUpdate,
-  }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-
-      await prefs.setString('market_date', _todayKey());
-
-      await prefs.setDouble('gold22', gold22);
-      await prefs.setDouble('gold21', gold21);
-      await prefs.setDouble('gold18', gold18);
-
-      await prefs.setDouble('silver22', silver22);
-      await prefs.setDouble('silver21', silver21);
-      await prefs.setDouble('silver18', silver18);
-
-      if (lastUpdate != null) {
-        await prefs.setString('market_last_update', lastUpdate);
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _refresh() async {
+  Future<void> _refreshPrices() async {
     if (_refreshing) return;
 
     setState(() {
       _refreshing = true;
-      _error = null;
+      _goldError = null;
+      _silverError = null;
     });
 
-    await _fetchOnlinePrices(updateUI: true);
+    await Future.wait([
+      _loadGold(),
+      _loadSilver(),
+    ]);
+
+    if (mounted) {
+      setState(() {
+        _refreshing = false;
+      });
+    }
+  }
+
+  Future<void> _loadGold() async {
+    try {
+      final uri = Uri.parse(
+        '$goldApi?refresh=${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Paroma-Jewellery-App',
+        },
+      ).timeout(
+        const Duration(seconds: 20),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Gold API status: ${response.statusCode}',
+        );
+      }
+
+      final body = response.body.trim();
+
+      if (body.isEmpty) {
+        throw Exception('Gold API empty response');
+      }
+
+      final data = jsonDecode(body);
+
+      final latest = data['latest'];
+
+      if (latest == null) {
+        throw Exception('Gold latest data পাওয়া যায়নি');
+      }
+
+      final k22 = _toDouble(latest['k22']);
+      final k21 = _toDouble(latest['k21']);
+      final k18 = _toDouble(latest['k18']);
+
+      if (k22 == null || k21 == null || k18 == null) {
+        throw Exception('Gold 22K/21K/18K data পাওয়া যায়নি');
+      }
+
+      final update = data['lastUpdate']?.toString();
+
+      if (!mounted) return;
+
+      setState(() {
+        gold22 = k22;
+        gold21 = k21;
+        gold18 = k18;
+
+        if (update != null && update.isNotEmpty) {
+          _lastUpdate = update;
+        }
+
+        _goldError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _goldError = 'Gold data পাওয়া যায়নি';
+      });
+    }
+  }
+
+  Future<void> _loadSilver() async {
+    try {
+      final uri = Uri.parse(
+        '$silverApi?refresh=${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Paroma-Jewellery-App',
+        },
+      ).timeout(
+        const Duration(seconds: 20),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Silver API status: ${response.statusCode}',
+        );
+      }
+
+      final body = response.body.trim();
+
+      if (body.isEmpty) {
+        throw Exception('Silver API empty response');
+      }
+
+      final data = jsonDecode(body);
+
+      final latest = data['latest'];
+
+      if (latest == null) {
+        throw Exception('Silver latest data পাওয়া যায়নি');
+      }
+
+      final k22 = _toDouble(latest['k22']);
+      final k21 = _toDouble(latest['k21']);
+      final k18 = _toDouble(latest['k18']);
+
+      if (k22 == null || k21 == null || k18 == null) {
+        throw Exception('Silver 22K/21K/18K data পাওয়া যায়নি');
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        silver22 = k22;
+        silver21 = k21;
+        silver18 = k18;
+
+        _silverError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _silverError = 'Silver data পাওয়া যায়নি';
+      });
+    }
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(
+        value.replaceAll(',', '').trim(),
+      );
+    }
+
+    return null;
   }
 
   String _money(double value) {
-    return '৳${value.round().toString()}';
+    return '৳${value.round()}';
   }
 
   // 1 ভরি = 11.664 gram
@@ -291,25 +233,20 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   // 1 ভরি = 96 রতি
   // 1 রতি = 10 পয়েন্ট
 
-  double _bhori(double perGram) {
-    return perGram * 11.664;
+  double _bhori(double gramPrice) {
+    return gramPrice * 11.664;
   }
 
-  double _ana(double perGram) {
-    return _bhori(perGram) / 16;
+  double _ana(double gramPrice) {
+    return _bhori(gramPrice) / 16;
   }
 
-  double _roti(double perGram) {
-    return _bhori(perGram) / 96;
+  double _roti(double gramPrice) {
+    return _bhori(gramPrice) / 96;
   }
 
-  double _point(double perGram) {
-    return _roti(perGram) / 10;
-  }
-
-  double _oldGold(double perGram) {
-    // পুরাতন সোনার ক্ষেত্রে 18% deduction
-    return _bhori(perGram) * 0.82;
+  double _point(double gramPrice) {
+    return _bhori(gramPrice) / 960;
   }
 
   Widget _sectionTitle(String title) {
@@ -321,7 +258,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
           ),
         ),
         const SizedBox(height: 7),
@@ -335,11 +271,11 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _headerRow() {
+  Widget _tableHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(
-        vertical: 11,
-        horizontal: 8,
+        vertical: 10,
+        horizontal: 5,
       ),
       decoration: BoxDecoration(
         color: Colors.grey.shade200,
@@ -354,62 +290,62 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               'ভরি',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               'আনা',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               'রতি',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               'পয়েন্ট',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
               'গ্রাম',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
@@ -420,19 +356,26 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
   Widget _priceRow({
     required String karat,
-    required double perGram,
+    required double gramPrice,
     bool oldGold = false,
   }) {
-    final bhori = _bhori(perGram);
+    final multiplier = oldGold ? 0.82 : 1.0;
+
+    final bhori = _bhori(gramPrice) * multiplier;
+    final ana = _ana(gramPrice) * multiplier;
+    final roti = _roti(gramPrice) * multiplier;
+    final point = _point(gramPrice) * multiplier;
 
     return Container(
       margin: const EdgeInsets.only(top: 7),
       padding: const EdgeInsets.symmetric(
-        vertical: 12,
-        horizontal: 6,
+        vertical: 11,
+        horizontal: 3,
       ),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(
+          color: Colors.grey.shade300,
+        ),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -444,48 +387,48 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 13,
+                fontSize: 12,
               ),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
-              _money(oldGold ? bhori * 0.82 : bhori),
+              _money(bhori),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11),
+              style: const TextStyle(fontSize: 10),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
-              _money(oldGold ? _ana(perGram) * 0.82 : _ana(perGram)),
+              _money(ana),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11),
+              style: const TextStyle(fontSize: 10),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
-              _money(oldGold ? _roti(perGram) * 0.82 : _roti(perGram)),
+              _money(roti),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11),
+              style: const TextStyle(fontSize: 10),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
-              _money(oldGold ? _point(perGram) * 0.82 : _point(perGram)),
+              _money(point),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11),
+              style: const TextStyle(fontSize: 10),
             ),
           ),
           Expanded(
-            flex: 2,
+            flex: 3,
             child: Text(
-              _money(perGram),
+              _money(gramPrice * multiplier),
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 11),
+              style: const TextStyle(fontSize: 10),
             ),
           ),
         ],
@@ -493,33 +436,18 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _deductionBox() {
+  Widget _loadingBox(String text) {
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 12, bottom: 20),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: Colors.orange.shade200,
-        ),
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(25),
+      child: Column(
         children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 15),
           Text(
-            'Deduction: 18%',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
+            text,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
               fontSize: 15,
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'Only for old gold purchase',
-            style: TextStyle(
-              fontSize: 12,
               color: Colors.black54,
             ),
           ),
@@ -528,163 +456,141 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _content() {
+  Widget _goldSection() {
     if (gold22 == null ||
         gold21 == null ||
-        gold18 == null ||
-        silver22 == null ||
-        silver21 == null ||
-        silver18 == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.cloud_off,
-                size: 55,
-                color: Colors.grey,
-              ),
-              const SizedBox(height: 15),
-              Text(
-                _error ??
-                    'আজকের বাজারের দাম লোড হচ্ছে...',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 18),
-              ElevatedButton.icon(
-                onPressed: _refresh,
-                icon: const Icon(Icons.refresh),
-                label: const Text('আবার চেষ্টা করুন'),
-              ),
-            ],
-          ),
+        gold18 == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.cloud_off,
+              size: 45,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _goldError ?? 'Gold price পাওয়া যাচ্ছে না',
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          _sectionTitle('সোনার দাম'),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('সোনার দাম'),
+        _tableHeader(),
 
-          _headerRow(),
+        _priceRow(
+          karat: '22K',
+          gramPrice: gold22!,
+        ),
 
-          _priceRow(
-            karat: '22K',
-            perGram: gold22!,
-          ),
+        _priceRow(
+          karat: '21K',
+          gramPrice: gold21!,
+        ),
 
-          _priceRow(
-            karat: '21K',
-            perGram: gold21!,
-          ),
+        _priceRow(
+          karat: '18K',
+          gramPrice: gold18!,
+        ),
 
-          _priceRow(
-            karat: '18K',
-            perGram: gold18!,
-          ),
+        const SizedBox(height: 14),
 
-          _deductionBox(),
-
-          const SizedBox(height: 5),
-
-          _sectionTitle('পুরাতন সোনার দাম'),
-
-          _headerRow(),
-
-          _priceRow(
-            karat: '22K',
-            perGram: gold22!,
-            oldGold: true,
-          ),
-
-          _priceRow(
-            karat: '21K',
-            perGram: gold21!,
-            oldGold: true,
-          ),
-
-          _priceRow(
-            karat: '18K',
-            perGram: gold18!,
-            oldGold: true,
-          ),
-
-          const SizedBox(height: 25),
-
-          _sectionTitle('রুপার দাম'),
-
-          _headerRow(),
-
-          _priceRow(
-            karat: '22K',
-            perGram: silver22!,
-          ),
-
-          _priceRow(
-            karat: '21K',
-            perGram: silver21!,
-          ),
-
-          _priceRow(
-            karat: '18K',
-            perGram: silver18!,
-          ),
-
-          if (_error != null) ...[
-            const SizedBox(height: 15),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                _error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.orange,
-                ),
-              ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Colors.orange.shade200,
             ),
-          ],
-
-          if (_lastUpdate != null) ...[
-            const SizedBox(height: 15),
-            Text(
-              'সর্বশেষ আপডেট: $_lastUpdate',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.grey,
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 20),
-
-          const Text(
-            'সূত্র: Gold Price Bangladesh',
-            textAlign: TextAlign.center,
+          ),
+          child: const Text(
+            'Deduction: 18%\nOnly for old gold purchase',
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        _sectionTitle('পুরাতন সোনার দাম'),
+        _tableHeader(),
+
+        _priceRow(
+          karat: '22K',
+          gramPrice: gold22!,
+          oldGold: true,
+        ),
+
+        _priceRow(
+          karat: '21K',
+          gramPrice: gold21!,
+          oldGold: true,
+        ),
+
+        _priceRow(
+          karat: '18K',
+          gramPrice: gold18!,
+          oldGold: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _silverSection() {
+    if (silver22 == null ||
+        silver21 == null ||
+        silver18 == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.cloud_off,
+              size: 45,
               color: Colors.grey,
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              _silverError ?? 'Silver price পাওয়া যাচ্ছে না',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
 
-          const SizedBox(height: 30),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('রুপার দাম'),
+        _tableHeader(),
+
+        _priceRow(
+          karat: '22K',
+          gramPrice: silver22!,
+        ),
+
+        _priceRow(
+          karat: '21K',
+          gramPrice: silver21!,
+        ),
+
+        _priceRow(
+          karat: '18K',
+          gramPrice: silver18!,
+        ),
+      ],
     );
   }
 
@@ -701,7 +607,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: _refreshing ? null : _refresh,
+            onPressed: _refreshing
+                ? null
+                : _refreshPrices,
             icon: _refreshing
                 ? const SizedBox(
                     width: 20,
@@ -715,10 +623,49 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(),
+          ? _loadingBox(
+              'আজকের বাজারের দাম লোড হচ্ছে...',
             )
-          : _content(),
+          : RefreshIndicator(
+              onRefresh: _refreshPrices,
+              child: ListView(
+                physics:
+                    const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  _goldSection(),
+
+                  const SizedBox(height: 28),
+
+                  _silverSection(),
+
+                  const SizedBox(height: 20),
+
+                  if (_lastUpdate != null)
+                    Text(
+                      'সর্বশেষ আপডেট: $_lastUpdate',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                      ),
+                    ),
+
+                  const SizedBox(height: 8),
+
+                  const Text(
+                    'Prices provided by Gold Price Bangladesh',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                    ),
+                  ),
+
+                  const SizedBox(height: 30),
+                ],
+              ),
+            ),
     );
   }
 }
