@@ -13,8 +13,7 @@ class TodaysMarketPage extends StatefulWidget {
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   bool isLoading = true;
   String errorMessage = '';
-
-  String updateText = '';
+  String lastUpdated = '';
 
   final Map<String, Map<String, String>> goldPrices = {};
   final Map<String, Map<String, String>> silverPrices = {};
@@ -22,15 +21,17 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   @override
   void initState() {
     super.initState();
-    _loadMarketData();
+    fetchMarketPrices();
   }
 
-  Future<void> _loadMarketData() async {
+  Future<void> fetchMarketPrices() async {
     if (!mounted) return;
 
     setState(() {
       isLoading = true;
       errorMessage = '';
+      goldPrices.clear();
+      silverPrices.clear();
     });
 
     try {
@@ -42,8 +43,11 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               '(KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36',
           'Accept':
               'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'bn-BD,bn;q=0.9,en;q=0.8',
         },
-      ).timeout(const Duration(seconds: 20));
+      ).timeout(
+        const Duration(seconds: 25),
+      );
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -53,267 +57,402 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
       final document = html_parser.parse(response.body);
 
-      _clearData();
+      _readMarketTables(document);
 
-      _parseTables(document);
+      // GoldR-এর page থেকে "সর্বশেষ আপডেট" বের করার চেষ্টা
+      final pageText = document.body?.text ?? '';
 
-      if (_hasAnyGoldData() || _hasAnySilverData()) {
-        final pageText = document.body?.text ?? '';
+      final updateMatch = RegExp(
+        r'সর্বশেষ আপডেট\s*[:ঃ]?\s*([^\n]+)',
+        caseSensitive: false,
+      ).firstMatch(pageText);
 
-        final updateMatch = RegExp(
-          r'সর্বশেষ আপডেট\s*[:ঃ]?\s*([^\n]+)',
-        ).firstMatch(pageText);
+      if (updateMatch != null) {
+        lastUpdated = updateMatch.group(1)?.trim() ?? '';
+      }
 
-        if (updateMatch != null) {
-          updateText = updateMatch.group(1)?.trim() ?? '';
-        }
+      // যদি table parser-এ data পাওয়া না যায়,
+      // তাহলে পুরো HTML/text থেকে fallback parser চালানো হবে।
+      if (goldPrices.isEmpty) {
+        _fallbackGoldParser(pageText);
+      }
 
-        if (!mounted) return;
+      if (silverPrices.isEmpty) {
+        _fallbackSilverParser(pageText);
+      }
 
-        setState(() {
-          isLoading = false;
-        });
-      } else {
+      if (goldPrices.isEmpty && silverPrices.isEmpty) {
         throw Exception(
-          'GoldR থেকে বাজারের দামের তথ্য পাওয়া যায়নি।',
+          'GoldR থেকে live market data পাওয়া যায়নি।',
         );
       }
+
+      if (!mounted) return;
+
+      setState(() {
+        isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
 
       setState(() {
         isLoading = false;
         errorMessage =
-            'আজকের বাজারের তথ্য লোড করা যাচ্ছে না।\n\n'
+            'আজকের বাজারের তথ্য এখন পাওয়া যাচ্ছে না।\n\n'
             'ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।';
       });
     }
   }
 
-  void _clearData() {
-    goldPrices.clear();
-    silverPrices.clear();
-    updateText = '';
-  }
-
-  bool _hasAnyGoldData() {
-    return goldPrices.isNotEmpty;
-  }
-
-  bool _hasAnySilverData() {
-    return silverPrices.isNotEmpty;
-  }
-
-  void _parseTables(dom.Document document) {
+  void _readMarketTables(dom.Document document) {
     final tables = document.querySelectorAll('table');
 
     for (final table in tables) {
-      final tableText = table.text.toLowerCase();
-
       final rows = table.querySelectorAll('tr');
 
-      bool isGoldTable = false;
-      bool isSilverTable = false;
+      String unit = 'ভরি';
+
+      final tableText = table.text;
+
+      if (tableText.contains('প্রতি গ্রাম')) {
+        unit = 'গ্রাম';
+      } else if (tableText.contains('প্রতি ভরি')) {
+        unit = 'ভরি';
+      } else if (tableText.contains('প্রতি আনা')) {
+        unit = 'আনা';
+      } else if (tableText.contains('প্রতি রতি')) {
+        unit = 'রতি';
+      }
 
       for (final row in rows) {
-        final text = row.text.trim();
+        final cells = row.querySelectorAll('td');
 
-        if (text.contains('22 Karat Gold') ||
-            text.contains('21 Karat Gold') ||
-            text.contains('18 Karat Gold') ||
-            text.contains('Traditional')) {
-          isGoldTable = true;
+        if (cells.length < 2) {
+          continue;
         }
 
-        if (text.contains('22 Karat Silver') ||
-            text.contains('21 Karat Silver') ||
-            text.contains('18 Karat Silver')) {
-          isSilverTable = true;
+        final name = _normalize(cells[0].text);
+
+        if (_isGoldName(name)) {
+          final marketPrice = _extractPrice(
+            cells[1].text,
+          );
+
+          String salePrice = '';
+
+          if (cells.length >= 3) {
+            salePrice = _extractPrice(
+              cells[2].text,
+            );
+          }
+
+          if (marketPrice.isNotEmpty) {
+            final key = _goldKey(name);
+
+            goldPrices[key] = {
+              'price': marketPrice,
+              'sale': salePrice,
+              'unit': unit,
+            };
+          }
         }
-      }
 
-      if (tableText.contains('gold type') &&
-          !tableText.contains('silver type')) {
-        isGoldTable = true;
-      }
+        if (_isSilverName(name)) {
+          final marketPrice = _extractPrice(
+            cells[1].text,
+          );
 
-      if (tableText.contains('silver type')) {
-        isSilverTable = true;
-      }
+          if (marketPrice.isNotEmpty) {
+            final key = _silverKey(name);
 
-      String unit = _detectUnit(table);
-
-      if (isGoldTable) {
-        _parseGoldRows(rows, unit);
-      }
-
-      if (isSilverTable) {
-        _parseSilverRows(rows, unit);
+            silverPrices[key] = {
+              'price': marketPrice,
+              'unit': unit,
+            };
+          }
+        }
       }
     }
   }
 
-  String _detectUnit(dom.Element table) {
-    String surroundingText = '';
-
-    dom.Element? current = table;
-
-    for (int i = 0; i < 4; i++) {
-      if (current == null) break;
-
-      surroundingText =
-          '${current.text} $surroundingText'.toLowerCase();
-
-      current = current.parent;
-    }
-
-    if (surroundingText.contains('প্রতি ভরি')) {
-      return 'ভরি';
-    }
-
-    if (surroundingText.contains('প্রতি আনা')) {
-      return 'আনা';
-    }
-
-    if (surroundingText.contains('প্রতি রতি')) {
-      return 'রতি';
-    }
-
-    if (surroundingText.contains('প্রতি গ্রাম')) {
-      return 'গ্রাম';
-    }
-
-    return 'ভরি';
+  bool _isGoldName(String name) {
+    return name.contains('22 karat gold') ||
+        name.contains('21 karat gold') ||
+        name.contains('18 karat gold') ||
+        name.contains('traditional');
   }
 
-  void _parseGoldRows(
-    List<dom.Element> rows,
-    String unit,
+  bool _isSilverName(String name) {
+    return name.contains('22 karat silver') ||
+        name.contains('21 karat silver') ||
+        name.contains('18 karat silver') ||
+        name.contains('traditional');
+  }
+
+  String _goldKey(String name) {
+    if (name.contains('22 karat gold')) {
+      return '22K';
+    }
+
+    if (name.contains('21 karat gold')) {
+      return '21K';
+    }
+
+    if (name.contains('18 karat gold')) {
+      return '18K';
+    }
+
+    return 'Traditional';
+  }
+
+  String _silverKey(String name) {
+    if (name.contains('22 karat silver')) {
+      return '22K';
+    }
+
+    if (name.contains('21 karat silver')) {
+      return '21K';
+    }
+
+    if (name.contains('18 karat silver')) {
+      return '18K';
+    }
+
+    return 'Traditional';
+  }
+
+  String _normalize(String value) {
+    return value
+        .replaceAll('\n', ' ')
+        .replaceAll('\r', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()
+        .toLowerCase();
+  }
+
+  String _extractPrice(String value) {
+    if (value.trim().isEmpty) {
+      return '';
+    }
+
+    String text = value;
+
+    // Bangla number → English number
+    const banglaDigits = '০১২৩৪৫৬৭৮৯';
+    const englishDigits = '0123456789';
+
+    for (int i = 0; i < banglaDigits.length; i++) {
+      text = text.replaceAll(
+        banglaDigits[i],
+        englishDigits[i],
+      );
+    }
+
+    // প্রথম ৳-এর পরের টাকা বের করার চেষ্টা
+    final takaMatch = RegExp(
+      r'৳\s*([0-9,]+)',
+    ).firstMatch(text);
+
+    if (takaMatch != null) {
+      return takaMatch.group(1) ?? '';
+    }
+
+    // ৳ না থাকলে প্রথম বড় number
+    final numberMatch = RegExp(
+      r'([0-9]{2,}(?:,[0-9]{3})*)',
+    ).firstMatch(text);
+
+    if (numberMatch != null) {
+      return numberMatch.group(1) ?? '';
+    }
+
+    return '';
+  }
+
+  void _fallbackGoldParser(String text) {
+    final normalized = text
+        .replaceAll('\n', ' ')
+        .replaceAll('\r', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    _fallbackGoldRow(
+      normalized,
+      '22 Karat Gold',
+      '22K',
+    );
+
+    _fallbackGoldRow(
+      normalized,
+      '21 Karat Gold',
+      '21K',
+    );
+
+    _fallbackGoldRow(
+      normalized,
+      '18 Karat Gold',
+      '18K',
+    );
+
+    _fallbackGoldRow(
+      normalized,
+      'Traditional',
+      'Traditional',
+    );
+  }
+
+  void _fallbackGoldRow(
+    String text,
+    String searchName,
+    String key,
   ) {
-    for (final row in rows) {
-      final cells = row.querySelectorAll('td');
+    final index = text.toLowerCase().indexOf(
+          searchName.toLowerCase(),
+        );
 
-      if (cells.length < 2) continue;
+    if (index == -1) {
+      return;
+    }
 
-      final name = cells[0].text.trim();
+    final end = index + 180;
 
-      if (!name.contains('Gold') &&
-          name != 'Traditional') {
-        continue;
+    final section = text.substring(
+      index,
+      end > text.length ? text.length : end,
+    );
+
+    final prices = RegExp(
+      r'৳\s*([০-৯0-9,]+)',
+    ).allMatches(section);
+
+    final found = <String>[];
+
+    for (final match in prices) {
+      final price = match.group(1);
+
+      if (price != null) {
+        found.add(_convertDigits(price));
       }
+    }
 
-      final price = _cleanPrice(cells[1].text);
-      String salePrice = '';
-
-      if (cells.length >= 3) {
-        salePrice = _cleanPrice(cells[2].text);
-      }
-
-      if (price.isEmpty) continue;
-
-      String key;
-
-      if (name.contains('22 Karat')) {
-        key = '22K';
-      } else if (name.contains('21 Karat')) {
-        key = '21K';
-      } else if (name.contains('18 Karat')) {
-        key = '18K';
-      } else if (name.contains('Traditional')) {
-        key = 'Traditional';
-      } else {
-        continue;
-      }
-
+    if (found.isNotEmpty) {
       goldPrices[key] = {
-        'unit': unit,
-        'price': price,
-        'sale': salePrice,
+        'price': found[0],
+        'sale': found.length > 1 ? found[1] : '',
+        'unit': 'ভরি',
       };
     }
   }
 
-  void _parseSilverRows(
-    List<dom.Element> rows,
-    String unit,
+  void _fallbackSilverParser(String text) {
+    final normalized = text
+        .replaceAll('\n', ' ')
+        .replaceAll('\r', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+
+    _fallbackSilverRow(
+      normalized,
+      '22 Karat Silver',
+      '22K',
+    );
+
+    _fallbackSilverRow(
+      normalized,
+      '21 Karat Silver',
+      '21K',
+    );
+
+    _fallbackSilverRow(
+      normalized,
+      '18 Karat Silver',
+      '18K',
+    );
+  }
+
+  void _fallbackSilverRow(
+    String text,
+    String searchName,
+    String key,
   ) {
-    for (final row in rows) {
-      final cells = row.querySelectorAll('td');
+    final index = text.toLowerCase().indexOf(
+          searchName.toLowerCase(),
+        );
 
-      if (cells.length < 2) continue;
+    if (index == -1) {
+      return;
+    }
 
-      final name = cells[0].text.trim();
+    final end = index + 120;
 
-      if (!name.contains('Silver')) continue;
+    final section = text.substring(
+      index,
+      end > text.length ? text.length : end,
+    );
 
-      final price = _cleanPrice(cells[1].text);
+    final prices = RegExp(
+      r'৳\s*([০-৯0-9,]+)',
+    ).allMatches(section);
 
-      if (price.isEmpty) continue;
+    for (final match in prices) {
+      final price = match.group(1);
 
-      String key;
+      if (price != null) {
+        silverPrices[key] = {
+          'price': _convertDigits(price),
+          'unit': 'ভরি',
+        };
 
-      if (name.contains('22 Karat')) {
-        key = '22K';
-      } else if (name.contains('21 Karat')) {
-        key = '21K';
-      } else if (name.contains('18 Karat')) {
-        key = '18K';
-      } else if (name.contains('Traditional')) {
-        key = 'Traditional';
-      } else {
-        continue;
+        break;
       }
-
-      silverPrices[key] = {
-        'unit': unit,
-        'price': price,
-      };
     }
   }
 
-  String _cleanPrice(String text) {
-    String value = text.trim();
+  String _convertDigits(String value) {
+    const banglaDigits = '০১২৩৪৫৬৭৮৯';
+    const englishDigits = '0123456789';
 
-    value = value.replaceAll('\n', ' ');
-    value = value.replaceAll('\r', ' ');
+    String result = value;
 
-    final match = RegExp(
-      r'[৳]?\s*([0-9০-৯,]+)',
-    ).firstMatch(value);
-
-    if (match == null) return '';
-
-    return match.group(1) ?? '';
-  }
-
-  String _banglaDigits(String text) {
-    const english = '0123456789';
-    const bangla = '০১২৩৪৫৬৭৮৯';
-
-    String result = text;
-
-    for (int i = 0; i < english.length; i++) {
+    for (int i = 0; i < banglaDigits.length; i++) {
       result = result.replaceAll(
-        english[i],
-        bangla[i],
+        banglaDigits[i],
+        englishDigits[i],
       );
     }
 
     return result;
   }
 
-  String _priceText(String price) {
-    if (price.isEmpty) return 'তথ্য নেই';
+  String _banglaDigits(String value) {
+    const englishDigits = '0123456789';
+    const banglaDigits = '০১২৩৪৫৬৭৮৯';
 
-    return '৳ ${_banglaDigits(price)}';
+    String result = value;
+
+    for (int i = 0; i < englishDigits.length; i++) {
+      result = result.replaceAll(
+        englishDigits[i],
+        banglaDigits[i],
+      );
+    }
+
+    return result;
   }
 
-  Widget _buildPriceCard({
+  String _displayPrice(String value) {
+    if (value.isEmpty) {
+      return 'তথ্য নেই';
+    }
+
+    return '৳ ${_banglaDigits(value)}';
+  }
+
+  Widget _priceCard({
     required String title,
-    required String subtitle,
+    required String unit,
     required String price,
-    String? salePrice,
-    required Color color,
+    String sale = '',
+    required IconData icon,
+    required Color iconColor,
   }) {
     return Container(
       width: double.infinity,
@@ -321,7 +460,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
@@ -331,55 +470,55 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: iconColor.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.workspace_premium,
-              color: color,
+              icon,
+              color: iconColor,
               size: 28,
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
                   style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
-                  subtitle,
+                  'প্রতি $unit',
                   style: const TextStyle(
-                    fontSize: 12,
                     color: Colors.black54,
+                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  _priceText(price),
+                  _displayPrice(price),
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 21,
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color: iconColor,
                   ),
                 ),
-                if (salePrice != null &&
-                    salePrice.isNotEmpty) ...[
-                  const SizedBox(height: 3),
+                if (sale.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    'পুরাতন বিক্রয়: ${_priceText(salePrice)}',
+                    'পুরাতন বিক্রয় মূল্য: ${_displayPrice(sale)}',
                     style: const TextStyle(
                       fontSize: 12,
                       color: Colors.black54,
@@ -394,7 +533,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _buildSectionTitle(
+  Widget _sectionTitle(
     String title,
     IconData icon,
   ) {
@@ -408,7 +547,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           Icon(
             icon,
             color: const Color(0xFF8B6508),
-            size: 25,
           ),
           const SizedBox(width: 8),
           Text(
@@ -424,15 +562,15 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  Widget _buildContent() {
-    final goldOrder = [
+  Widget _buildMarketContent() {
+    const goldOrder = [
       '22K',
       '21K',
       '18K',
       'Traditional',
     ];
 
-    final silverOrder = [
+    const silverOrder = [
       '22K',
       '21K',
       '18K',
@@ -440,14 +578,14 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     ];
 
     return RefreshIndicator(
-      onRefresh: _loadMarketData,
+      onRefresh: fetchMarketPrices,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(14),
         children: [
           Container(
-            width: double.infinity,
             padding: const EdgeInsets.all(18),
-            margin: const EdgeInsets.only(bottom: 14),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [
@@ -455,14 +593,14 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   Color(0xFF9E1B1B),
                 ],
               ),
-              borderRadius: BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: const Column(
               children: [
                 Icon(
                   Icons.storefront,
                   color: Color(0xFFFFD700),
-                  size: 36,
+                  size: 38,
                 ),
                 SizedBox(height: 7),
                 Text(
@@ -475,7 +613,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'সর্বশেষ বাজার দর',
+                  'সর্বশেষ সোনা ও রুপার বাজার দর',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 13,
@@ -485,92 +623,71 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
-          _buildSectionTitle(
+          _sectionTitle(
             'সোনার দাম',
             Icons.auto_awesome,
           ),
 
           ...goldOrder.map((key) {
-            final item = goldPrices[key];
+            final data = goldPrices[key];
 
-            if (item == null) {
-              return _buildPriceCard(
-                title: key == 'Traditional'
-                    ? 'সনাতন'
-                    : '$key সোনা',
-                subtitle: 'প্রতি ভরি',
-                price: '',
-                color: Colors.amber.shade800,
-              );
-            }
+            final title = key == 'Traditional'
+                ? 'সনাতন সোনা'
+                : '$key সোনা';
 
-            return _buildPriceCard(
-              title: key == 'Traditional'
-                  ? 'সনাতন'
-                  : '$key সোনা',
-              subtitle:
-                  'প্রতি ${item['unit'] ?? 'ভরি'}',
-              price: item['price'] ?? '',
-              salePrice: item['sale'],
-              color: Colors.amber.shade800,
+            return _priceCard(
+              title: title,
+              unit: data?['unit'] ?? 'ভরি',
+              price: data?['price'] ?? '',
+              sale: data?['sale'] ?? '',
+              icon: Icons.workspace_premium,
+              iconColor: Colors.amber.shade800,
             );
           }),
 
           const SizedBox(height: 8),
 
-          _buildSectionTitle(
+          _sectionTitle(
             'রুপার দাম',
             Icons.circle_outlined,
           ),
 
           ...silverOrder.map((key) {
-            final item = silverPrices[key];
+            final data = silverPrices[key];
 
-            if (item == null) {
-              return _buildPriceCard(
-                title: key == 'Traditional'
-                    ? 'সনাতন রুপা'
-                    : '$key রুপা',
-                subtitle: 'প্রতি ভরি',
-                price: '',
-                color: Colors.blueGrey,
-              );
-            }
+            final title = key == 'Traditional'
+                ? 'সনাতন রুপা'
+                : '$key রুপা';
 
-            return _buildPriceCard(
-              title: key == 'Traditional'
-                  ? 'সনাতন রুপা'
-                  : '$key রুপা',
-              subtitle:
-                  'প্রতি ${item['unit'] ?? 'ভরি'}',
-              price: item['price'] ?? '',
-              color: Colors.blueGrey,
+            return _priceCard(
+              title: title,
+              unit: data?['unit'] ?? 'ভরি',
+              price: data?['price'] ?? '',
+              icon: Icons.circle_outlined,
+              iconColor: Colors.blueGrey,
             );
           }),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
-          if (updateText.isNotEmpty)
-            Center(
-              child: Text(
-                'সর্বশেষ আপডেট: $updateText',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.black54,
-                  fontSize: 12,
-                ),
+          if (lastUpdated.isNotEmpty)
+            Text(
+              'সর্বশেষ আপডেট: $lastUpdated',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.black54,
               ),
             ),
 
-          const SizedBox(height: 15),
+          const SizedBox(height: 8),
 
-          const Center(
-            child: Text(
-              'তথ্য: GoldR.org',
-              style: TextStyle(
-                color: Colors.black45,
-                fontSize: 11,
-              ),
+          const Text(
+            'তথ্যসূত্র: GoldR.org',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.black45,
             ),
           ),
 
@@ -603,11 +720,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                     MainAxisAlignment.center,
                 children: [
                   CircularProgressIndicator(),
-                  SizedBox(height: 16),
+                  SizedBox(height: 15),
                   Text(
                     'আজকের বাজারের দাম লোড হচ্ছে...',
                     style: TextStyle(
-                      fontSize: 15,
                       color: Colors.black54,
                     ),
                   ),
@@ -624,24 +740,22 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                       children: [
                         const Icon(
                           Icons.cloud_off,
-                          color: Colors.red,
                           size: 65,
+                          color: Colors.red,
                         ),
                         const SizedBox(height: 15),
                         Text(
                           errorMessage,
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 15,
                             color: Colors.red,
+                            fontSize: 15,
                           ),
                         ),
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
-                          onPressed: _loadMarketData,
-                          icon: const Icon(
-                            Icons.refresh,
-                          ),
+                          onPressed: fetchMarketPrices,
+                          icon: const Icon(Icons.refresh),
                           label: const Text(
                             'আবার চেষ্টা করুন',
                           ),
@@ -650,7 +764,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                     ),
                   ),
                 )
-              : _buildContent(),
+              : _buildMarketContent(),
     );
   }
 }
