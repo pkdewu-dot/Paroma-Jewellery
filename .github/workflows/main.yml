@@ -31,6 +31,10 @@ jobs:
           rm -rf android
           flutter create . --platforms=android --project-name paroma_jewellery
 
+      - name: Add Internet Permission
+        run: |
+          sed -i '/<manifest xmlns:android=/a\    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+
       - name: Get Flutter dependencies
         run: flutter pub get
 
