@@ -1,0 +1,26 @@
+name: Test GoldR Live24K Endpoint
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-live24k:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Test GoldR live24k endpoint
+        run: |
+          python scripts/test_live24k.py
