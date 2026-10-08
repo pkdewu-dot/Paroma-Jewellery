@@ -1,9 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:crypto/crypto.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'todays_market_page.dart';
 
@@ -67,70 +67,101 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
 
 // ================= ২৪ ক্যারেট লাইভ দাম =================
 
-const String _goldR24kUrl = 'https://www.goldr.org/live24k.json';
-const String _goldRHostKey = 'goldr.org';
+// Public JSON API ব্যবহার করা হচ্ছে।
+// Encrypted endpoint না হওয়ায় APK-তে decrypt fail করে price না আসার সমস্যা থাকবে না.
+const String _liveRatesUrl = 'https://www.liveexchanges.com/api/rates';
+const String _price24kCacheKey = 'paroma_24k_price_v2';
 
-Future<double?> fetchGoldR24kPrice() async {
+// ১ ট্রয় আউন্স = 31.1034768 গ্রাম
+// ১ ভরি = 11.664 গ্রাম
+const double _troyOunceInGrams = 31.1034768;
+const double _bhoriInGrams = 11.664;
+
+Future<double?> fetchLive24kPrice() async {
   try {
     final response = await http.get(
-      Uri.parse(_goldR24kUrl),
+      Uri.parse(_liveRatesUrl),
       headers: const {
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0',
       },
     ).timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) {
+    if (response.statusCode != 200) return null;
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is! List) return null;
+
+    double? xauBdt;
+    double? xauUsd;
+    double? usdBdt;
+
+    for (final item in decoded) {
+      if (item is! Map) continue;
+
+      final pair = item['pair']?.toString().toUpperCase();
+      final rawRate = item['rate'];
+      final rate = rawRate is num
+          ? rawRate.toDouble()
+          : double.tryParse(rawRate?.toString() ?? '');
+
+      if (rate == null) continue;
+
+      if (pair == 'XAU/BDT') {
+        xauBdt = rate;
+      } else if (pair == 'XAU/USD') {
+        xauUsd = rate;
+      } else if (pair == 'USD/BDT') {
+        usdBdt = rate;
+      }
+    }
+
+    // XAU/BDT সরাসরি পাওয়া গেলে সেটাই ব্যবহার হবে.
+    double? pricePerTroyOunceBdt = xauBdt;
+
+    // XAU/BDT না থাকলে XAU/USD × USD/BDT.
+    if (pricePerTroyOunceBdt == null && xauUsd != null && usdBdt != null) {
+      pricePerTroyOunceBdt = xauUsd * usdBdt;
+    }
+
+    if (pricePerTroyOunceBdt == null || pricePerTroyOunceBdt <= 0) {
       return null;
     }
 
-    final outer = jsonDecode(response.body);
-    if (outer is! Map || outer['success'] != true) {
+    final pricePerGram24k = pricePerTroyOunceBdt / _troyOunceInGrams;
+    final pricePerBhori24k = pricePerGram24k * _bhoriInGrams;
+
+    if (!pricePerBhori24k.isFinite || pricePerBhori24k <= 0) {
       return null;
     }
 
-    final ivText = outer['i']?.toString();
-    final encryptedText = outer['d']?.toString();
-    if (ivText == null || encryptedText == null ||
-        ivText.isEmpty || encryptedText.isEmpty) {
-      return null;
-    }
-
-    final keyBytes = sha256.convert(utf8.encode(_goldRHostKey)).bytes;
-    final ivBytes = base64.decode(ivText);
-
-    final key = encrypt.Key.fromBase64(base64.encode(keyBytes));
-    final iv = encrypt.IV(ivBytes);
-    final encrypter = encrypt.Encrypter(
-      encrypt.AES(
-        key,
-        mode: encrypt.AESMode.cbc,
-        padding: 'PKCS7',
-      ),
-    );
-
-    final decrypted = encrypter.decrypt64(encryptedText, iv: iv);
-    final data = jsonDecode(decrypted);
-
-    if (data is! Map) {
-      return null;
-    }
-
-    final rawPrice = data['price-vori-final'];
-    if (rawPrice is num) {
-      return rawPrice.toDouble();
-    }
-
-    if (rawPrice is String) {
-      final cleaned =
-          rawPrice.replaceAll(',', '').replaceAll('৳', '').trim();
-      return double.tryParse(cleaned);
-    }
-
-    return null;
+    return pricePerBhori24k;
   } catch (_) {
     return null;
   }
+}
+
+Future<double?> _loadCached24kPrice() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getDouble(_price24kCacheKey);
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> _saveCached24kPrice(double price) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_price24kCacheKey, price);
+  } catch (_) {
+    // Cache save fail হলেও live price দেখানো বন্ধ হবে না.
+  }
+}
+
+// আগের function name রেখে দেওয়া হয়েছে যাতে project-এর অন্য কোনো call থাকলেও
+// compile error না হয়.
+Future<double?> fetchGoldR24kPrice() async {
+  return fetchLive24kPrice();
 }
 
 // ================= ১. হোম স্ক্রিন =================
@@ -144,25 +175,55 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   double? _price24k;
   bool _loading24k = true;
+  bool _showCached24k = false;
+  Timer? _priceRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _load24kPrice();
+
+    // Home screen খোলা থাকলে প্রতি ৫ মিনিটে আবার live price নেবে.
+    _priceRefreshTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _load24kPrice(),
+    );
   }
 
   Future<void> _load24kPrice() async {
-    final price = await fetchGoldR24kPrice();
     if (!mounted) return;
 
     setState(() {
-      _price24k = price;
+      _loading24k = true;
+    });
+
+    final livePrice = await fetchLive24kPrice();
+
+    if (livePrice != null) {
+      await _saveCached24kPrice(livePrice);
+
+      if (!mounted) return;
+      setState(() {
+        _price24k = livePrice;
+        _loading24k = false;
+        _showCached24k = false;
+      });
+      return;
+    }
+
+    // Internet/API সমস্যা হলে সর্বশেষ সফল price দেখাবে.
+    final cachedPrice = await _loadCached24kPrice();
+
+    if (!mounted) return;
+    setState(() {
+      _price24k = cachedPrice;
       _loading24k = false;
+      _showCached24k = cachedPrice != null;
     });
   }
 
   String _get24kCardTitle() {
-    if (_loading24k) {
+    if (_loading24k && _price24k == null) {
       return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nলোড হচ্ছে...');
     }
 
@@ -171,7 +232,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final price = formatNumberWithCommas(_price24k!);
-    return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\n৳$price / ভরি');
+    final suffix = _showCached24k ? '\n(সর্বশেষ সংরক্ষিত)' : '';
+    return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\n৳$price / ভরি$suffix');
+  }
+
+  @override
+  void dispose() {
+    _priceRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
