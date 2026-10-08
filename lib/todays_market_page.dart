@@ -367,10 +367,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           ),
         ],
       ),
-
-      // IMPORTANT:
-      // এখানে const Row রাখা হয়নি,
-      // কারণ style.copyWith() const expression নয়।
       child: Row(
         children: [
           Expanded(
@@ -497,7 +493,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       child: Row(
         children: [
           // ======================================================
-          // Karat
+          // Karat - 14
           // ======================================================
 
           Expanded(
@@ -509,13 +505,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: karatColor,
                 fontWeight:
                     FontWeight.w800,
-                fontSize: 12,
+                fontSize: 14,
               ),
             ),
           ),
 
           // ======================================================
-          // Bhori
+          // Bhori - 14
           // ======================================================
 
           Expanded(
@@ -527,13 +523,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: _valueBlue,
                 fontWeight:
                     FontWeight.w700,
-                fontSize: 11,
+                fontSize: 14,
               ),
             ),
           ),
 
           // ======================================================
-          // Ana
+          // Ana - 14
           // ======================================================
 
           Expanded(
@@ -545,13 +541,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: _valueGreen,
                 fontWeight:
                     FontWeight.w700,
-                fontSize: 11,
+                fontSize: 14,
               ),
             ),
           ),
 
           // ======================================================
-          // Roti
+          // Roti - 14
           // ======================================================
 
           Expanded(
@@ -563,13 +559,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: _valuePurple,
                 fontWeight:
                     FontWeight.w700,
-                fontSize: 11,
+                fontSize: 14,
               ),
             ),
           ),
 
           // ======================================================
-          // Point
+          // Point - 14
           // ======================================================
 
           Expanded(
@@ -581,13 +577,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: _valueOrange,
                 fontWeight:
                     FontWeight.w700,
-                fontSize: 11,
+                fontSize: 14,
               ),
             ),
           ),
 
           // ======================================================
-          // Gram
+          // Gram - 14
           // ======================================================
 
           Expanded(
@@ -599,7 +595,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                 color: _valueRed,
                 fontWeight:
                     FontWeight.w700,
-                fontSize: 11,
+                fontSize: 14,
               ),
             ),
           ),
