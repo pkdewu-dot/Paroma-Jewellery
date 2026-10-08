@@ -1,0 +1,35 @@
+name: Inspect GoldR 24K Source
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect-goldr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Inspect GoldR source
+        run: |
+          python scripts/inspect_goldr_source.py
+
+      - name: Upload GoldR source files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldr-source-inspection
+          path: |
+            goldr_page_source.html
+            goldr_price_ultra.js
