@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -67,74 +70,72 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
 
 // ================= ২৪ ক্যারেট লাইভ দাম =================
 
-// Public JSON API ব্যবহার করা হচ্ছে।
-// Encrypted endpoint না হওয়ায় APK-তে decrypt fail করে price না আসার সমস্যা থাকবে না.
-const String _liveRatesUrl = 'https://www.liveexchanges.com/api/rates';
-const String _price24kCacheKey = 'paroma_24k_price_v2';
+// GoldR-এর live 24K encrypted endpoint.
+const String _goldR24kUrl = 'https://www.goldr.org/live24k.json';
+const String _price24kCacheKey = 'paroma_24k_price_v3';
+const String _goldRHostKey = 'www.goldr.org';
 
-// ১ ট্রয় আউন্স = 31.1034768 গ্রাম
-// ১ ভরি = 11.664 গ্রাম
-const double _troyOunceInGrams = 31.1034768;
-const double _bhoriInGrams = 11.664;
-
-Future<double?> fetchLive24kPrice() async {
+Future<double?> fetchGoldR24kPrice() async {
   try {
     final response = await http.get(
-      Uri.parse(_liveRatesUrl),
+      Uri.parse(_goldR24kUrl),
       headers: const {
-        'Accept': 'application/json',
+        'Accept': 'application/json,text/plain,*/*',
+        'Referer': 'https://www.goldr.org/',
+        'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) '
+            'Chrome/154.0.0.0 Safari/537.36',
       },
     ).timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) return null;
 
     final decoded = jsonDecode(response.body);
-    if (decoded is! List) return null;
+    if (decoded is! Map) return null;
+    if (decoded['success'] != true) return null;
 
-    double? xauBdt;
-    double? xauUsd;
-    double? usdBdt;
+    final encryptedData = decoded['d']?.toString();
+    final ivString = decoded['i']?.toString();
 
-    for (final item in decoded) {
-      if (item is! Map) continue;
+    if (encryptedData == null || encryptedData.isEmpty) return null;
+    if (ivString == null || ivString.isEmpty) return null;
 
-      final pair = item['pair']?.toString().toUpperCase();
-      final rawRate = item['rate'];
-      final rate = rawRate is num
-          ? rawRate.toDouble()
-          : double.tryParse(rawRate?.toString() ?? '');
+    final ivBytes = base64Decode(ivString);
+    final cipherBytes = base64Decode(encryptedData);
 
-      if (rate == null) continue;
+    if (ivBytes.length != 16) return null;
+    if (cipherBytes.isEmpty || cipherBytes.length % 16 != 0) return null;
 
-      if (pair == 'XAU/BDT') {
-        xauBdt = rate;
-      } else if (pair == 'XAU/USD') {
-        xauUsd = rate;
-      } else if (pair == 'USD/BDT') {
-        usdBdt = rate;
-      }
-    }
+    // GoldR endpoint-এর key = SHA-256('www.goldr.org').
+    final keyBytes = sha256.convert(utf8.encode(_goldRHostKey)).bytes;
 
-    // XAU/BDT সরাসরি পাওয়া গেলে সেটাই ব্যবহার হবে.
-    double? pricePerTroyOunceBdt = xauBdt;
+    final encrypter = Encrypter(
+      AES(
+        Key(Uint8List.fromList(keyBytes)),
+        mode: AESMode.cbc,
+        padding: 'PKCS7',
+      ),
+    );
 
-    // XAU/BDT না থাকলে XAU/USD × USD/BDT.
-    if (pricePerTroyOunceBdt == null && xauUsd != null && usdBdt != null) {
-      pricePerTroyOunceBdt = xauUsd * usdBdt;
-    }
+    final decryptedText = encrypter.decrypt(
+      Encrypted(Uint8List.fromList(cipherBytes)),
+      iv: IV(Uint8List.fromList(ivBytes)),
+    );
 
-    if (pricePerTroyOunceBdt == null || pricePerTroyOunceBdt <= 0) {
-      return null;
-    }
+    final priceData = jsonDecode(decryptedText);
+    if (priceData is! Map) return null;
+    if (priceData['success'] != true) return null;
 
-    final pricePerGram24k = pricePerTroyOunceBdt / _troyOunceInGrams;
-    final pricePerBhori24k = pricePerGram24k * _bhoriInGrams;
+    // এই field-টাই GoldR-এর 24K final/piece-bar price per bhori.
+    final rawPrice = priceData['price_per_vori_bdt'];
+    final price = rawPrice is num
+        ? rawPrice.toDouble()
+        : double.tryParse(rawPrice?.toString() ?? '');
 
-    if (!pricePerBhori24k.isFinite || pricePerBhori24k <= 0) {
-      return null;
-    }
+    if (price == null || !price.isFinite || price <= 0) return null;
 
-    return pricePerBhori24k;
+    return price;
   } catch (_) {
     return null;
   }
@@ -154,14 +155,8 @@ Future<void> _saveCached24kPrice(double price) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_price24kCacheKey, price);
   } catch (_) {
-    // Cache save fail হলেও live price দেখানো বন্ধ হবে না.
+    // Cache save fail হলেও live price দেখানো বন্ধ হবে না।
   }
-}
-
-// আগের function name রেখে দেওয়া হয়েছে যাতে project-এর অন্য কোনো call থাকলেও
-// compile error না হয়.
-Future<double?> fetchGoldR24kPrice() async {
-  return fetchLive24kPrice();
 }
 
 // ================= ১. হোম স্ক্রিন =================
@@ -197,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _loading24k = true;
     });
 
-    final livePrice = await fetchLive24kPrice();
+    final livePrice = await fetchGoldR24kPrice();
 
     if (livePrice != null) {
       await _saveCached24kPrice(livePrice);
@@ -231,7 +226,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nডাটা পাওয়া যায়নি');
     }
 
-    final price = formatNumberWithCommas(_price24k!);
+    final price = formatNumberWithCommas(_price24k!, isCurrency: true);
     final suffix = _showCached24k ? '\n(সর্বশেষ সংরক্ষিত)' : '';
     return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\n৳$price / ভরি$suffix');
   }
