@@ -1,0 +1,36 @@
+name: Test GoldR 24K Extraction
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-goldr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run GoldR 24K diagnostic
+        run: |
+          python scripts/test_goldr_24k.py
+
+      - name: Upload diagnostic files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goldr-24k-diagnostic
+          path: |
+            goldr_24k_debug.png
+            goldr_24k_debug.txt
