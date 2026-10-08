@@ -28,10 +28,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   double? _silver21;
   double? _silver18;
 
-  // Default old-gold deduction
+  // Default percentage
   double _deduction = 18.0;
 
-  final TextEditingController _deductionController =
+  final TextEditingController _percentageController =
       TextEditingController(text: '18');
 
   @override
@@ -42,7 +42,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
   @override
   void dispose() {
-    _deductionController.dispose();
+    _percentageController.dispose();
     super.dispose();
   }
 
@@ -75,7 +75,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
               'Pragma': 'no-cache',
             },
           )
-          .timeout(const Duration(seconds: 20));
+          .timeout(
+            const Duration(seconds: 20),
+          );
 
       if (response.statusCode != 200) {
         throw Exception(
@@ -102,8 +104,12 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       final s21 = _number(silver?['k21']);
       final s18 = _number(silver?['k18']);
 
-      if (g22 == null || g21 == null || g18 == null) {
-        throw Exception('Incomplete gold data');
+      if (g22 == null ||
+          g21 == null ||
+          g18 == null) {
+        throw Exception(
+          'Incomplete gold data',
+        );
       }
 
       if (!mounted) return;
@@ -149,11 +155,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return null;
   }
 
-  // ------------------------------------------------------------
-  // Number formatting
-  // Bangladeshi / Indian comma format
-  // Example: 220000 -> ২,২০,০০০
-  // ------------------------------------------------------------
+  // ============================================================
+  // Bangla number formatting
+  // ============================================================
 
   String _banglaDigits(String value) {
     const english = '0123456789';
@@ -183,14 +187,11 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       );
     }
 
-    final lastThree = number.substring(
-      number.length - 3,
-    );
+    final lastThree =
+        number.substring(number.length - 3);
 
-    String remaining = number.substring(
-      0,
-      number.length - 3,
-    );
+    String remaining =
+        number.substring(0, number.length - 3);
 
     final groups = <String>[];
 
@@ -209,7 +210,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     }
 
     if (remaining.isNotEmpty) {
-      groups.insert(0, remaining);
+      groups.insert(
+        0,
+        remaining,
+      );
     }
 
     final formatted =
@@ -224,14 +228,14 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return _formatNumber(value);
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // Unit calculation
   //
   // 1 ভরি = 11.664 gram
   // 1 ভরি = 16 আনা
   // 1 ভরি = 96 রতি
   // 1 রতি = 10 পয়েন্ট
-  // ------------------------------------------------------------
+  // ============================================================
 
   double _bhori(double gram) {
     return gram * 11.664;
@@ -249,9 +253,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     return _bhori(gram) / 960;
   }
 
-  // ------------------------------------------------------------
-  // Theme colors
-  // ------------------------------------------------------------
+  // ============================================================
+  // Colors
+  // ============================================================
 
   static const Color _primaryGold =
       Color(0xFFB8860B);
@@ -298,9 +302,13 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   static const Color _valueRed =
       Color(0xFF9C4141);
 
-  // ------------------------------------------------------------
+  // Light ash underline
+  static const Color _percentageUnderline =
+      Color(0xFFD9D9D9);
+
+  // ============================================================
   // Section title
-  // ------------------------------------------------------------
+  // ============================================================
 
   Widget _sectionTitle(String title) {
     return Padding(
@@ -333,11 +341,16 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  // ------------------------------------------------------------
-  // Header
-  // ------------------------------------------------------------
+  // ============================================================
+  // Table header
+  // ============================================================
 
   Widget _tableHeader() {
+    const style = TextStyle(
+      fontWeight: FontWeight.w800,
+      fontSize: 12,
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: 12,
@@ -364,10 +377,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'ক্যারেট',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerDark,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -376,10 +387,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'ভরি',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerBlue,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -388,10 +397,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'আনা',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerGreen,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -400,10 +407,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'রতি',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerPurple,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -412,10 +417,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'পয়েন্ট',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerOrange,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -424,10 +427,8 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             child: Text(
               'গ্রাম',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: style.copyWith(
                 color: _headerRed,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
               ),
             ),
           ),
@@ -436,9 +437,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // Price row
-  // ------------------------------------------------------------
+  // ============================================================
 
   Widget _priceRow(
     String karat,
@@ -446,23 +447,23 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     bool oldGold = false,
     Color background = _rowWhite,
   }) {
-    final deductionMultiplier =
+    final multiplier =
         oldGold ? (1 - (_deduction / 100)) : 1.0;
 
     final gram =
-        gramPrice * deductionMultiplier;
+        gramPrice * multiplier;
 
     final bhori =
-        _bhori(gramPrice) * deductionMultiplier;
+        _bhori(gramPrice) * multiplier;
 
     final ana =
-        _ana(gramPrice) * deductionMultiplier;
+        _ana(gramPrice) * multiplier;
 
     final roti =
-        _roti(gramPrice) * deductionMultiplier;
+        _roti(gramPrice) * multiplier;
 
     final point =
-        _point(gramPrice) * deductionMultiplier;
+        _point(gramPrice) * multiplier;
 
     return Container(
       margin: const EdgeInsets.only(top: 6),
@@ -479,7 +480,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       ),
       child: Row(
         children: [
+          // ======================================================
           // Karat
+          // ======================================================
+
           Expanded(
             flex: 2,
             child: Text(
@@ -497,7 +501,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
+          // ======================================================
           // Bhori
+          // ======================================================
+
           Expanded(
             flex: 3,
             child: Text(
@@ -511,7 +518,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
+          // ======================================================
           // Ana
+          // ======================================================
+
           Expanded(
             flex: 3,
             child: Text(
@@ -525,7 +535,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
+          // ======================================================
           // Roti
+          // ======================================================
+
           Expanded(
             flex: 3,
             child: Text(
@@ -539,7 +552,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
+          // ======================================================
           // Point
+          // ======================================================
+
           Expanded(
             flex: 3,
             child: Text(
@@ -553,7 +569,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
             ),
           ),
 
+          // ======================================================
           // Gram
+          // ======================================================
+
           Expanded(
             flex: 3,
             child: Text(
@@ -571,99 +590,113 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  // ------------------------------------------------------------
-  // Deduction control
-  // ------------------------------------------------------------
+  // ============================================================
+  // Percentage input
+  //
+  // Text = White
+  // Underline = Light Ash
+  // ============================================================
 
-  Widget _deductionControl() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF8E8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFE8C979),
+  Widget _percentageInput() {
+    return SizedBox(
+      width: 72,
+      child: TextField(
+        controller: _percentageController,
+        keyboardType:
+            const TextInputType.numberWithOptions(
+          decimal: true,
         ),
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+        decoration: const InputDecoration(
+          hintText: '%',
+          hintStyle: TextStyle(
+            color: Colors.white,
+          ),
+          suffixText: '%',
+          suffixStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+          isDense: true,
+          contentPadding: EdgeInsets.only(
+            left: 4,
+            right: 4,
+            bottom: 5,
+          ),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: _percentageUnderline,
+              width: 1.5,
+            ),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(
+              color: _percentageUnderline,
+              width: 1.5,
+            ),
+          ),
+        ),
+        onChanged: (value) {
+          final parsed =
+              double.tryParse(value.trim());
+
+          if (parsed == null) {
+            return;
+          }
+
+          if (parsed < 0 || parsed > 100) {
+            return;
+          }
+
+          setState(() {
+            _deduction = parsed;
+          });
+        },
+      ),
+    );
+  }
+
+  // ============================================================
+  // Old gold title
+  // ============================================================
+
+  Widget _oldGoldTitle() {
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: 20,
+        bottom: 12,
       ),
       child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.center,
         children: [
           const Expanded(
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Deduction',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: _headerDark,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'পুরাতন সোনার জন্য',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          SizedBox(
-            width: 82,
-            height: 43,
-            child: TextField(
-              controller: _deductionController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              textAlign: TextAlign.center,
-              style: const TextStyle(
+            child: Text(
+              'পুরাতন সোনার দাম',
+              style: TextStyle(
+                fontSize: 20,
                 fontWeight: FontWeight.w800,
-                fontSize: 15,
+                color: _headerDark,
               ),
-              decoration: InputDecoration(
-                suffixText: '%',
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(8),
-                ),
-              ),
-              onChanged: (value) {
-                final parsed =
-                    double.tryParse(value);
-
-                if (parsed == null) return;
-
-                if (parsed < 0 || parsed > 100) {
-                  return;
-                }
-
-                setState(() {
-                  _deduction = parsed;
-                });
-              },
             ),
           ),
+
+          // Percentage input
+          _percentageInput(),
         ],
       ),
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // Gold section
-  // ------------------------------------------------------------
+  // ============================================================
 
   Widget _goldSection() {
     if (_gold22 == null ||
@@ -682,52 +715,33 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
         _tableHeader(),
 
+        // 22K
         _priceRow(
           '22K',
           _gold22!,
           background: _rowBlue,
         ),
 
+        // 21K
         _priceRow(
           '21K',
           _gold21!,
           background: _rowWhite,
         ),
 
+        // 18K
         _priceRow(
           '18K',
           _gold18!,
           background: _rowAsh,
         ),
 
-        const SizedBox(height: 20),
-
-        // Old gold title + deduction box
-        Row(
-          crossAxisAlignment:
-              CrossAxisAlignment.center,
-          children: [
-            const Expanded(
-              child: Text(
-                'পুরাতন সোনার দাম',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: _headerDark,
-                ),
-              ),
-            ),
-            SizedBox(
-              width: 145,
-              child: _deductionControl(),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 12),
+        // Old gold
+        _oldGoldTitle(),
 
         _tableHeader(),
 
+        // Old gold 22K
         _priceRow(
           '22K',
           _gold22!,
@@ -735,6 +749,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           background: _rowBlue,
         ),
 
+        // Old gold 21K
         _priceRow(
           '21K',
           _gold21!,
@@ -742,6 +757,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           background: _rowWhite,
         ),
 
+        // Old gold 18K
         _priceRow(
           '18K',
           _gold18!,
@@ -752,9 +768,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // Silver section
-  // ------------------------------------------------------------
+  // ============================================================
 
   Widget _silverSection() {
     if (_silver22 == null ||
@@ -794,6 +810,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
+  // ============================================================
+  // Unavailable
+  // ============================================================
+
   Widget _unavailable(String text) {
     return Container(
       width: double.infinity,
@@ -815,9 +835,9 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // Build
-  // ------------------------------------------------------------
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -848,11 +868,12 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Icon(Icons.refresh),
+                : const Icon(
+                    Icons.refresh,
+                  ),
           ),
         ],
       ),
-
       body: _loading
           ? const Center(
               child: CircularProgressIndicator(),
