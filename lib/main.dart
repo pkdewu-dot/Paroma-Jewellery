@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:encrypt/encrypt.dart';
+import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -110,17 +110,17 @@ Future<double?> fetchGoldR24kPrice() async {
     // GoldR endpoint-এর key = SHA-256('www.goldr.org').
     final keyBytes = sha256.convert(utf8.encode(_goldRHostKey)).bytes;
 
-    final encrypter = Encrypter(
-      AES(
-        Key(Uint8List.fromList(keyBytes)),
-        mode: AESMode.cbc,
+    final encrypter = enc.Encrypter(
+      enc.AES(
+        enc.Key(Uint8List.fromList(keyBytes)),
+        mode: enc.AESMode.cbc,
         padding: 'PKCS7',
       ),
     );
 
     final decryptedText = encrypter.decrypt(
-      Encrypted(Uint8List.fromList(cipherBytes)),
-      iv: IV(Uint8List.fromList(ivBytes)),
+      enc.Encrypted(Uint8List.fromList(cipherBytes)),
+      iv: enc.IV(Uint8List.fromList(ivBytes)),
     );
 
     final priceData = jsonDecode(decryptedText);
