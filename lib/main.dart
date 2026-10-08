@@ -1,4 +1,10 @@
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import 'todays_market_page.dart';
 
 void main() {
@@ -59,9 +65,114 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
   }
 }
 
+// ================= ২৪ ক্যারেট লাইভ দাম =================
+
+const String _goldR24kUrl = 'https://www.goldr.org/live24k.json';
+const String _goldRHostKey = 'goldr.org';
+
+Future<double?> fetchGoldR24kPrice() async {
+  try {
+    final response = await http.get(
+      Uri.parse(_goldR24kUrl),
+      headers: const {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+      },
+    ).timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      return null;
+    }
+
+    final outer = jsonDecode(response.body);
+    if (outer is! Map || outer['success'] != true) {
+      return null;
+    }
+
+    final ivText = outer['i']?.toString();
+    final encryptedText = outer['d']?.toString();
+    if (ivText == null || encryptedText == null ||
+        ivText.isEmpty || encryptedText.isEmpty) {
+      return null;
+    }
+
+    final keyBytes = sha256.convert(utf8.encode(_goldRHostKey)).bytes;
+    final ivBytes = base64.decode(ivText);
+
+    final key = encrypt.Key.fromBase64(base64.encode(keyBytes));
+    final iv = encrypt.IV(ivBytes);
+    final encrypter = encrypt.Encrypter(
+      encrypt.AES(
+        key,
+        mode: encrypt.AESMode.cbc,
+        padding: 'PKCS7',
+      ),
+    );
+
+    final decrypted = encrypter.decrypt64(encryptedText, iv: iv);
+    final data = jsonDecode(decrypted);
+
+    if (data is! Map) {
+      return null;
+    }
+
+    final rawPrice = data['price-vori-final'];
+    if (rawPrice is num) {
+      return rawPrice.toDouble();
+    }
+
+    if (rawPrice is String) {
+      final cleaned =
+          rawPrice.replaceAll(',', '').replaceAll('৳', '').trim();
+      return double.tryParse(cleaned);
+    }
+
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
 // ================= ১. হোম স্ক্রিন =================
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  double? _price24k;
+  bool _loading24k = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load24kPrice();
+  }
+
+  Future<void> _load24kPrice() async {
+    final price = await fetchGoldR24kPrice();
+    if (!mounted) return;
+
+    setState(() {
+      _price24k = price;
+      _loading24k = false;
+    });
+  }
+
+  String _get24kCardTitle() {
+    if (_loading24k) {
+      return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nলোড হচ্ছে...');
+    }
+
+    if (_price24k == null) {
+      return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nডাটা পাওয়া যায়নি');
+    }
+
+    final price = formatNumberWithCommas(_price24k!);
+    return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\n৳$price / ভরি');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +332,7 @@ class HomeScreen extends StatelessWidget {
                           children: [
                             _buildWhiteCard(
                               context: context,
-                              title: toBanglaDigit('২৪ ক্যারেট সোনার\nদাম'),
+                              title: _get24kCardTitle(),
                               icon: Icons.star_border,
                               iconColor: Colors.amber,
                             ),
