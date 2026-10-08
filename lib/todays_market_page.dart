@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TodaysMarketPage extends StatefulWidget {
   const TodaysMarketPage({super.key});
@@ -13,6 +14,9 @@ class TodaysMarketPage extends StatefulWidget {
 class _TodaysMarketPageState extends State<TodaysMarketPage> {
   static const String _marketUrl =
       'https://raw.githubusercontent.com/pkdewu-dot/Paroma-Jewellery/main/market.json';
+
+  // সর্বশেষ পাওয়া market data ফোনে সংরক্ষণ করার cache key
+  static const String _marketCacheKey = 'paroma_market_cache_v1';
 
   bool _loading = true;
   bool _refreshing = false;
@@ -92,6 +96,10 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
       final data = jsonDecode(body);
 
+      if (data is! Map<String, dynamic>) {
+        throw Exception('Invalid market data');
+      }
+
       final gold = data['gold'];
       final silver = data['silver'];
 
@@ -106,6 +114,11 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
       if (g22 == null || g21 == null || g18 == null) {
         throw Exception('Incomplete gold data');
       }
+
+      // Internet থেকে নতুন data পাওয়া গেলে ফোনে save করে রাখি।
+      // পরবর্তীতে internet না থাকলেও এই saved data দেখানো হবে।
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_marketCacheKey, body);
 
       if (!mounted) return;
 
@@ -125,14 +138,80 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         _error = null;
       });
     } catch (e) {
+      // Internet না থাকলে সর্বশেষ saved data ব্যবহার করি।
+      final cachedData = await _loadCachedMarket();
+
       if (!mounted) return;
 
-      setState(() {
-        _loading = false;
-        _refreshing = false;
-        _error =
-            'আজকের বাজারের দাম পাওয়া যাচ্ছে না। আবার চেষ্টা করুন।';
-      });
+      if (cachedData != null) {
+        setState(() {
+          _gold22 = cachedData['gold22'];
+          _gold21 = cachedData['gold21'];
+          _gold18 = cachedData['gold18'];
+
+          _silver22 = cachedData['silver22'];
+          _silver21 = cachedData['silver21'];
+          _silver18 = cachedData['silver18'];
+
+          _lastUpdate = cachedData['lastUpdate'];
+          _loading = false;
+          _refreshing = false;
+          _error =
+              'ইন্টারনেট সংযোগ নেই। সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
+        });
+      } else {
+        setState(() {
+          _loading = false;
+          _refreshing = false;
+          _error =
+              'আজকের বাজারের দাম পাওয়া যাচ্ছে না। একবার ইন্টারনেট চালু করে অ্যাপটি খুলুন।';
+        });
+      }
+    }
+  }
+
+  // ফোনে আগে save করা market data পড়বে।
+  Future<Map<String, dynamic>?> _loadCachedMarket() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedBody = prefs.getString(_marketCacheKey);
+
+      if (cachedBody == null || cachedBody.trim().isEmpty) {
+        return null;
+      }
+
+      final data = jsonDecode(cachedBody);
+
+      if (data is! Map<String, dynamic>) {
+        return null;
+      }
+
+      final gold = data['gold'];
+      final silver = data['silver'];
+
+      final g22 = _number(gold?['k22']);
+      final g21 = _number(gold?['k21']);
+      final g18 = _number(gold?['k18']);
+
+      final s22 = _number(silver?['k22']);
+      final s21 = _number(silver?['k21']);
+      final s18 = _number(silver?['k18']);
+
+      if (g22 == null || g21 == null || g18 == null) {
+        return null;
+      }
+
+      return {
+        'gold22': g22,
+        'gold21': g21,
+        'gold18': g18,
+        'silver22': s22,
+        'silver21': s21,
+        'silver18': s18,
+        'lastUpdate': data['lastUpdate']?.toString(),
+      };
+    } catch (_) {
+      return null;
     }
   }
 
