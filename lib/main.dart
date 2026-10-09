@@ -133,7 +133,11 @@ Future<double?> fetchGoldR24kPrice() async {
         ? rawPrice.toDouble()
         : double.tryParse(rawPrice?.toString() ?? '');
 
-    if (price == null || !price.isFinite || price <= 0) return null;
+    // 24K gold per bhori should be within a realistic range. Reject malformed
+    // or unexpectedly scaled values instead of showing a misleading price.
+    if (price == null || !price.isFinite || price < 100000 || price > 1000000) {
+      return null;
+    }
 
     return price;
   } catch (_) {
@@ -144,7 +148,11 @@ Future<double?> fetchGoldR24kPrice() async {
 Future<double?> _loadCached24kPrice() async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getDouble(_price24kCacheKey);
+    final cached = prefs.getDouble(_price24kCacheKey);
+    if (cached == null || !cached.isFinite || cached < 100000 || cached > 1000000) {
+      return null;
+    }
+    return cached;
   } catch (_) {
     return null;
   }
@@ -398,6 +406,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: _get24kCardTitle(),
                               icon: Icons.star_border,
                               iconColor: Colors.amber,
+                              targetScreen: const GoldR24KPriceScreen(),
                             ),
                             _buildWhiteCard(
                               context: context,
@@ -545,6 +554,122 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ========== ২৪ ক্যারেট লাইভ দামের বিস্তারিত ==========
+class GoldR24KPriceScreen extends StatefulWidget {
+  const GoldR24KPriceScreen({super.key});
+
+  @override
+  State<GoldR24KPriceScreen> createState() => _GoldR24KPriceScreenState();
+}
+
+class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
+  double? _price;
+  bool _loading = true;
+  String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshPrice();
+  }
+
+  Future<void> _refreshPrice() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _message = null;
+    });
+
+    final livePrice = await fetchGoldR24kPrice();
+    if (livePrice != null) {
+      await _saveCached24kPrice(livePrice);
+      if (!mounted) return;
+      setState(() {
+        _price = livePrice;
+        _loading = false;
+        _message = 'GoldR থেকে সর্বশেষ পাওয়া ২৪ ক্যারেট বার/পিসের দাম';
+      });
+      return;
+    }
+
+    final cachedPrice = await _loadCached24kPrice();
+    if (!mounted) return;
+    setState(() {
+      _price = cachedPrice;
+      _loading = false;
+      _message = cachedPrice == null
+          ? 'বর্তমানে যাচাই করা দাম পাওয়া যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
+          : 'ইন্টারনেট/API সংযোগ না পাওয়ায় সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final priceText = _price == null
+        ? 'দাম পাওয়া যায়নি'
+        : '৳ ${formatNumberWithCommas(_price!, isCurrency: true)} / ভরি';
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('২৪ ক্যারেট সোনার দাম'),
+        backgroundColor: const Color(0xFFFF3B30),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'দাম আবার দেখুন',
+            onPressed: _loading ? null : _refreshPrice,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.star, size: 56, color: Colors.amber),
+              const SizedBox(height: 16),
+              const Text(
+                '২৪ ক্যারেট বার/পিস সোনা',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              if (_loading) const CircularProgressIndicator(),
+              if (!_loading)
+                Text(
+                  priceText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+              const SizedBox(height: 12),
+              if (_message != null)
+                Text(
+                  _message!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                ),
+              const SizedBox(height: 20),
+              const Text(
+                'দাম প্রতি ভরি (১১.৬৬৪ গ্রাম)। অস্বাভাবিক বা যাচাই করা যায়নি এমন দাম দেখানো হবে না।',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loading ? null : _refreshPrice,
+                icon: const Icon(Icons.refresh),
+                label: const Text('দাম আপডেট করুন'),
+              ),
+            ],
           ),
         ),
       ),
