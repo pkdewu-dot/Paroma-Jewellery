@@ -75,7 +75,19 @@ const String _goldR24kUrl = 'https://www.goldr.org/live24k.json';
 const String _price24kCacheKey = 'paroma_24k_price_v3';
 const String _goldRHostKey = 'www.goldr.org';
 
-Future<double?> fetchGoldR24kPrice() async {
+class GoldR24kPrices {
+  final double perVori;
+  final double pakaIdea;
+  final double raw;
+
+  const GoldR24kPrices({
+    required this.perVori,
+    required this.pakaIdea,
+    required this.raw,
+  });
+}
+
+Future<GoldR24kPrices?> fetchGoldR24kPrices() async {
   try {
     final response = await http.get(
       Uri.parse(_goldR24kUrl),
@@ -127,22 +139,31 @@ Future<double?> fetchGoldR24kPrice() async {
     if (priceData is! Map) return null;
     if (priceData['success'] != true) return null;
 
-    // এই field-টাই GoldR-এর 24K final/piece-bar price per bhori.
-    final rawPrice = priceData['price_per_vori_bdt'];
-    final price = rawPrice is num
-        ? rawPrice.toDouble()
-        : double.tryParse(rawPrice?.toString() ?? '');
-
-    // 24K gold per bhori should be within a realistic range. Reject malformed
-    // or unexpectedly scaled values instead of showing a misleading price.
-    if (price == null || !price.isFinite || price < 100000 || price > 1000000) {
-      return null;
+    double? readPrice(String key) {
+      final value = priceData[key];
+      final price = value is num
+          ? value.toDouble()
+          : double.tryParse(value?.toString() ?? '');
+      if (price == null || !price.isFinite || price < 100000 || price > 1000000) {
+        return null;
+      }
+      return price;
     }
 
-    return price;
+    final perVori = readPrice('price_per_vori_bdt');
+    final pakaIdea = readPrice('price_per_vori_bdt_paka_idea');
+    final raw = readPrice('price_per_vori_bdt_raw');
+    if (perVori == null || pakaIdea == null || raw == null) return null;
+
+    return GoldR24kPrices(perVori: perVori, pakaIdea: pakaIdea, raw: raw);
   } catch (_) {
     return null;
   }
+}
+
+Future<double?> fetchGoldR24kPrice() async {
+  final prices = await fetchGoldR24kPrices();
+  return prices?.perVori;
 }
 
 Future<double?> _loadCached24kPrice() async {
@@ -571,50 +592,123 @@ class GoldR24KPriceScreen extends StatefulWidget {
 
 class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
   double? _price;
+  double? _pakaIdeaPrice;
+  double? _rawPrice;
   bool _loading = true;
+  bool _refreshInProgress = false;
   String? _message;
+  Timer? _autoRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _refreshPrice();
-  }
-
-  Future<void> _refreshPrice() async {
-    if (!mounted) return;
-    setState(() {
-      _loading = true;
-      _message = null;
-    });
-
-    final livePrice = await fetchGoldR24kPrice();
-    if (livePrice != null) {
-      await _saveCached24kPrice(livePrice);
-      if (!mounted) return;
-      setState(() {
-        _price = livePrice;
-        _loading = false;
-        _message = 'GoldR থেকে সর্বশেষ পাওয়া ২৪ ক্যারেট বার/পিসের দাম';
-      });
-      return;
-    }
-
-    final cachedPrice = await _loadCached24kPrice();
-    if (!mounted) return;
-    setState(() {
-      _price = cachedPrice;
-      _loading = false;
-      _message = cachedPrice == null
-          ? 'বর্তমানে যাচাই করা দাম পাওয়া যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
-          : 'ইন্টারনেট/API সংযোগ না পাওয়ায় সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
+    // স্ক্রিন খোলা থাকলে প্রতি ১ মিনিটে নতুন দাম আনার চেষ্টা করবে।
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) _refreshPrice();
     });
   }
 
   @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refreshPrice() async {
+    if (!mounted || _refreshInProgress) return;
+    _refreshInProgress = true;
+
+    // আগে থেকে দাম থাকলে refresh চলাকালে সেটি স্ক্রিনে থাকবে।
+    if (_price == null) {
+      setState(() {
+        _loading = true;
+        _message = null;
+      });
+    } else {
+      setState(() {
+        _message = 'সর্বশেষ দাম যাচাই করা হচ্ছে…';
+      });
+    }
+
+    try {
+      final livePrices = await fetchGoldR24kPrices();
+      if (livePrices != null) {
+        await _saveCached24kPrice(livePrices.perVori);
+        if (!mounted) return;
+        setState(() {
+          _price = livePrices.perVori;
+          _pakaIdeaPrice = livePrices.pakaIdea;
+          _rawPrice = livePrices.raw;
+          _loading = false;
+          _message = 'GoldR থেকে সর্বশেষ পাওয়া ২৪ ক্যারেটের দাম';
+        });
+        return;
+      }
+
+      final cachedPrice = await _loadCached24kPrice();
+      if (!mounted) return;
+      setState(() {
+        // আগে থেকে live price থাকলে cache lookup ব্যর্থ হলেও সেটি মুছবে না।
+        _price ??= cachedPrice;
+        _loading = false;
+        _message = _price == null
+            ? 'বর্তমানে যাচাই করা দাম পাওয়া যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
+            : 'নতুন দাম পাওয়া যায়নি। সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _message = _price == null
+            ? 'দাম পাওয়া যায়নি। ইন্টারনেট সংযোগ পরীক্ষা করে আবার চেষ্টা করুন।'
+            : 'দাম আপডেট করা যায়নি; আগের দাম দেখানো হচ্ছে।';
+      });
+    } finally {
+      _refreshInProgress = false;
+    }
+  }
+
+  Widget _priceCard({
+    required String title,
+    required String value,
+    required bool primary,
+    String? subtitle,
+  }) {
+    final background = primary ? const Color(0xFFF1F4FF) : Colors.white;
+    final borderColor = primary ? const Color(0xFF9AAAD0) : const Color(0xFFB7BBC6);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        children: [
+          Text(title, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF555555))),
+          const SizedBox(height: 10),
+          Text(value, textAlign: TextAlign.center,
+            style: TextStyle(fontSize: primary ? 28 : 24, fontWeight: FontWeight.bold,
+              color: primary ? const Color(0xFF2058A8) : const Color(0xFF222222))),
+          if (subtitle != null) ...[
+            const SizedBox(height: 6),
+            Text(subtitle, textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, color: Colors.black54)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final priceText = _price == null
-        ? 'দাম পাওয়া যায়নি'
-        : '৳ ${formatNumberWithCommas(_price!, isCurrency: true)} / ভরি';
+    final firstPrice = _price == null
+        ? (_loading ? 'দাম লোড হচ্ছে…' : 'দাম পাওয়া যায়নি')
+        : '৳ ${formatNumberWithCommas(_price!, isCurrency: true)}';
 
     return Scaffold(
       appBar: AppBar(
@@ -624,57 +718,67 @@ class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
         actions: [
           IconButton(
             tooltip: 'দাম আবার দেখুন',
-            onPressed: _loading ? null : _refreshPrice,
+            onPressed: _refreshInProgress ? null : _refreshPrice,
             icon: const Icon(Icons.refresh),
           ),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.star, size: 56, color: Colors.amber),
-              const SizedBox(height: 16),
-              const Text(
-                '২৪ ক্যারেট বার/পিস সোনা',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              if (_loading) const CircularProgressIndicator(),
-              if (!_loading)
-                Text(
-                  priceText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-              const SizedBox(height: 12),
-              if (_message != null)
-                Text(
-                  _message!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
-                ),
-              const SizedBox(height: 20),
-              const Text(
-                'দাম প্রতি ভরি (১১.৬৬৪ গ্রাম)। অস্বাভাবিক বা যাচাই করা যায়নি এমন দাম দেখানো হবে না।',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.black54),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: _loading ? null : _refreshPrice,
-                icon: const Icon(Icons.refresh),
-                label: const Text('দাম আপডেট করুন'),
-              ),
+      body: RefreshIndicator(
+        onRefresh: _refreshPrice,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SizedBox(height: 4),
+            _priceCard(
+              title: 'প্রতি ভরি (১১.৬৬৪ গ্রাম)',
+              value: firstPrice,
+              primary: true,
+              subtitle: 'GoldR থেকে পাওয়া ২৪K বার/পিসের দাম',
+            ),
+            _priceCard(
+              title: 'পাকা আইডিয়া',
+              value: _pakaIdeaPrice == null
+                  ? (_loading ? 'দাম লোড হচ্ছে…' : 'লাইভ দাম পাওয়া যায়নি')
+                  : '৳ ${formatNumberWithCommas(_pakaIdeaPrice!, isCurrency: true)}',
+              primary: false,
+              subtitle: 'GoldR-এর পাকা আইডিয়ার মূল্য',
+            ),
+            _priceCard(
+              title: 'VAT ও শুল্ক ছাড়া',
+              value: _rawPrice == null
+                  ? (_loading ? 'দাম লোড হচ্ছে…' : 'লাইভ দাম পাওয়া যায়নি')
+                  : '৳ ${formatNumberWithCommas(_rawPrice!, isCurrency: true)}',
+              primary: false,
+              subtitle: 'GoldR-এর VAT ও শুল্ক ছাড়া মূল্য',
+            ),
+            if (_refreshInProgress) ...[
+              const SizedBox(height: 4),
+              const Center(child: SizedBox(width: 20, height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2))),
             ],
-          ),
+            if (_message != null) ...[
+              const SizedBox(height: 4),
+              Text(_message!, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            ],
+            const SizedBox(height: 8),
+            const Text(
+              'দাম প্রতি ভরি (১১.৬৬৪ গ্রাম)। দ্বিতীয় ও তৃতীয় লাইভ মূল্য GoldR-এর API ফিল্ড যাচাই না হওয়া পর্যন্ত দেখানো হচ্ছে না।',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _refreshInProgress ? null : _refreshPrice,
+              icon: const Icon(Icons.refresh),
+              label: const Text('দাম আপডেট করুন'),
+            ),
+          ],
         ),
       ),
     );
   }
+
 }
 
 // ========== কারিগর খতিয়ান স্ক্রিন ==========
