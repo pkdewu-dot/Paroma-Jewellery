@@ -49,98 +49,152 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
     super.dispose();
   }
 
+  // Gold Price Bangladesh API returns the latest available saved BAJUS-based
+  // records, not a guaranteed live quote. We display its source update date.
+  static const String _goldApiUrl =
+      'https://gold-price.bd/api/gold/latest.json';
+  static const String _silverApiUrl =
+      'https://gold-price.bd/api/silver/latest.json';
+
+  Future<Map<String, dynamic>> _fetchApiMarket() async {
+    const headers = {
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+    };
+
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final responses = await Future.wait([
+      http.get(Uri.parse('$_goldApiUrl?ts=$stamp'), headers: headers)
+          .timeout(const Duration(seconds: 20)),
+      http.get(Uri.parse('$_silverApiUrl?ts=$stamp'), headers: headers)
+          .timeout(const Duration(seconds: 20)),
+    ]);
+
+    if (responses[0].statusCode != 200 ||
+        responses[1].statusCode != 200) {
+      throw Exception('Price API status error');
+    }
+
+    final goldData = jsonDecode(responses[0].body);
+    final silverData = jsonDecode(responses[1].body);
+    if (goldData is! Map<String, dynamic> ||
+        silverData is! Map<String, dynamic>) {
+      throw Exception('Invalid price API response');
+    }
+
+    final goldLatest = goldData['latest'];
+    final silverLatest = silverData['latest'];
+    if (goldLatest is! Map || silverLatest is! Map) {
+      throw Exception('Price API data is missing');
+    }
+
+    final g22 = _number(goldLatest['k22']);
+    final g21 = _number(goldLatest['k21']);
+    final g18 = _number(goldLatest['k18']);
+    final s22 = _number(silverLatest['k22']);
+    final s21 = _number(silverLatest['k21']);
+    final s18 = _number(silverLatest['k18']);
+
+    if (g22 == null || g21 == null || g18 == null ||
+        s22 == null || s21 == null || s18 == null) {
+      throw Exception('Price API returned incomplete prices');
+    }
+
+    final goldUpdate = goldData['lastUpdate']?.toString();
+    final silverUpdate = silverData['lastUpdate']?.toString();
+    if (goldUpdate == null || goldUpdate.isEmpty ||
+        silverUpdate == null || silverUpdate.isEmpty) {
+      throw Exception('Price API update date is missing');
+    }
+
+    return {
+      'gold': {'k22': g22, 'k21': g21, 'k18': g18},
+      'silver': {'k22': s22, 'k21': s21, 'k18': s18},
+      'lastUpdate': 'সোনা: $goldUpdate | রুপা: $silverUpdate',
+    };
+  }
+
   Future<void> _loadMarket({bool manualRefresh = false}) async {
     if (mounted) {
       setState(() {
-        if (!manualRefresh) {
-          _loading = true;
-        }
-
-        if (manualRefresh) {
-          _refreshing = true;
-        }
-
+        if (!manualRefresh) _loading = true;
+        if (manualRefresh) _refreshing = true;
         _error = null;
       });
     }
 
     try {
-      final uri = Uri.parse(
-        '$_marketUrl?ts=${DateTime.now().millisecondsSinceEpoch}',
-      );
+      Map<String, dynamic> data;
 
-      final response = await http
-          .get(
-            uri,
-            headers: const {
-              'Accept': 'application/json',
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache',
-            },
-          )
-          .timeout(
-            const Duration(seconds: 20),
-          );
-
-      if (response.statusCode != 200) {
-        throw Exception(
-          'Market file status: ${response.statusCode}',
+      try {
+        // First try the public API's latest saved BAJUS-based records.
+        data = await _fetchApiMarket();
+      } catch (_) {
+        // If the API fails, try the repository JSON as a secondary source.
+        final uri = Uri.parse(
+          '$_marketUrl?ts=${DateTime.now().millisecondsSinceEpoch}',
         );
-      }
+        final response = await http.get(
+          uri,
+          headers: const {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
+        ).timeout(const Duration(seconds: 20));
 
-      final body = response.body.trim();
+        if (response.statusCode != 200) {
+          throw Exception('Market file status: ${response.statusCode}');
+        }
+        final body = response.body.trim();
+        if (body.isEmpty) throw Exception('Market file empty');
 
-      if (body.isEmpty) {
-        throw Exception('Market file empty');
-      }
-
-      final data = jsonDecode(body);
-
-      if (data is! Map<String, dynamic>) {
-        throw Exception('Invalid market data');
+        final decoded = jsonDecode(body);
+        if (decoded is! Map<String, dynamic>) {
+          throw Exception('Invalid market data');
+        }
+        data = decoded;
       }
 
       final gold = data['gold'];
       final silver = data['silver'];
-
       final g22 = _number(gold?['k22']);
       final g21 = _number(gold?['k21']);
       final g18 = _number(gold?['k18']);
-
       final s22 = _number(silver?['k22']);
       final s21 = _number(silver?['k21']);
       final s18 = _number(silver?['k18']);
 
-      if (g22 == null || g21 == null || g18 == null) {
-        throw Exception('Incomplete gold data');
+      if (g22 == null || g21 == null || g18 == null ||
+          s22 == null || s21 == null || s18 == null) {
+        throw Exception('Incomplete gold or silver data');
       }
 
-      // Internet থেকে নতুন data পাওয়া গেলে ফোনে save করে রাখি।
-      // পরবর্তীতে internet না থাকলেও এই saved data দেখানো হবে।
+      final normalizedData = <String, dynamic>{
+        'gold': {'k22': g22, 'k21': g21, 'k18': g18},
+        'silver': {'k22': s22, 'k21': s21, 'k18': s18},
+        'lastUpdate': data['lastUpdate']?.toString() ?? 'তারিখ পাওয়া যায়নি',
+      };
+
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_marketCacheKey, body);
+      await prefs.setString(_marketCacheKey, jsonEncode(normalizedData));
 
       if (!mounted) return;
-
       setState(() {
         _gold22 = g22;
         _gold21 = g21;
         _gold18 = g18;
-
         _silver22 = s22;
         _silver21 = s21;
         _silver18 = s18;
-
-        _lastUpdate = data['lastUpdate']?.toString();
-
+        _lastUpdate = normalizedData['lastUpdate'] as String;
         _loading = false;
         _refreshing = false;
         _error = null;
       });
-    } catch (e) {
-      // Internet না থাকলে সর্বশেষ saved data ব্যবহার করি।
+    } catch (_) {
       final cachedData = await _loadCachedMarket();
-
       if (!mounted) return;
 
       if (cachedData != null) {
@@ -148,23 +202,21 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           _gold22 = cachedData['gold22'];
           _gold21 = cachedData['gold21'];
           _gold18 = cachedData['gold18'];
-
           _silver22 = cachedData['silver22'];
           _silver21 = cachedData['silver21'];
           _silver18 = cachedData['silver18'];
-
           _lastUpdate = cachedData['lastUpdate'];
           _loading = false;
           _refreshing = false;
           _error =
-              'ইন্টারনেট সংযোগ নেই। সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
+              'নতুন দাম আনা যায়নি। সর্বশেষ সংরক্ষিত দাম দেখানো হচ্ছে।';
         });
       } else {
         setState(() {
           _loading = false;
           _refreshing = false;
           _error =
-              'আজকের বাজারের দাম পাওয়া যাচ্ছে না। একবার ইন্টারনেট চালু করে অ্যাপটি খুলুন।';
+              'আজকের বাজারের দাম পাওয়া যাচ্ছে না। ইন্টারনেট চালু করে আবার চেষ্টা করুন।';
         });
       }
     }
@@ -1046,7 +1098,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                   ),
 
                   const Text(
-                    'Prices provided by Gold Price Bangladesh',
+                    'Prices provided by Gold Price Bangladesh (BAJUS-based saved records)',
                     textAlign:
                         TextAlign.center,
                     style: TextStyle(
