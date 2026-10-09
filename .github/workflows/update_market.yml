@@ -1,0 +1,100 @@
+```yaml
+name: Update Gold and Silver Market Prices
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-market-prices
+  cancel-in-progress: false
+
+jobs:
+  update-market:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch and validate latest saved prices
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          from pathlib import Path
+          from datetime import datetime, timezone
+
+          sources = {
+              "gold": "https://gold-price.bd/api/gold/latest.json",
+              "silver": "https://gold-price.bd/api/silver/latest.json",
+          }
+
+          def fetch_json(url):
+              request = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "ParomaJewelleryPriceUpdater/1.0"}
+              )
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  return json.loads(response.read().decode("utf-8"))
+
+          gold_data = fetch_json(sources["gold"])
+          silver_data = fetch_json(sources["silver"])
+
+          def extract_prices(data):
+              latest = data.get("latest", data)
+              prices = {}
+              for karat in ("k22", "k21", "k18"):
+                  value = latest.get(karat)
+                  if isinstance(value, dict):
+                      value = value.get("price")
+                  if isinstance(value, bool) or not isinstance(value, (int, float)):
+                      raise ValueError(f"Missing or invalid {karat} price")
+                  if value <= 0:
+                      raise ValueError(f"Invalid {karat} price")
+                  prices[karat] = value
+              return prices
+
+          gold = extract_prices(gold_data)
+          silver = extract_prices(silver_data)
+
+          old_path = Path("market.json")
+          old = json.loads(old_path.read_text(encoding="utf-8"))
+
+          result = {
+              "gold": gold,
+              "silver": silver,
+              "lastUpdate": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+          }
+
+          if old == result:
+              print("Market prices have not changed.")
+          else:
+              old_path.write_text(
+                  json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+                  encoding="utf-8"
+              )
+              print("Validated market prices saved.")
+          PY
+
+      - name: Commit updated prices
+        run: |
+          if git diff --quiet -- market.json; then
+            echo "No market.json changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add market.json
+          git commit -m "Update gold and silver market prices"
+          git push
+```
