@@ -246,18 +246,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // হোম স্ক্রিনের ২৪K কার্ডে শুধু নাম দেখাবে; দাম বিস্তারিত পেজে থাকবে।
   String _get24kCardTitle() {
-    if (_loading24k && _price24k == null) {
-      return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nলোড হচ্ছে...');
-    }
-
-    if (_price24k == null) {
-      return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\nডাটা পাওয়া যায়নি');
-    }
-
-    final price = formatNumberWithCommas(_price24k!, isCurrency: true);
-    final suffix = _showCached24k ? '\n(সর্বশেষ সংরক্ষিত)' : '';
-    return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম\n৳$price / ভরি$suffix');
+    return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম');
   }
 
   @override
