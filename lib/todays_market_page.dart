@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
 
   bool _loading = true;
   bool _refreshing = false;
+  Timer? _autoRefreshTimer;
 
   String? _error;
   String? _lastUpdate;
@@ -41,10 +43,18 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
   void initState() {
     super.initState();
     _loadMarket();
+
+    // Refresh prices automatically every 5 minutes while this page is open.
+    _autoRefreshTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (mounted && !_refreshing) {
+        _loadMarket(manualRefresh: true);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
     _percentageController.dispose();
     super.dispose();
   }
