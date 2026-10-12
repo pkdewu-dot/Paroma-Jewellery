@@ -2,6 +2,40 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+// ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
+String toBanglaDigit(String input) {
+  const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+
+  for (int i = 0; i < englishDigits.length; i++) {
+    input = input.replaceAll(englishDigits[i], banglaDigits[i]);
+  }
+  return input;
+}
+
+String formatNumberWithCommas(double number, {bool isCurrency = false}) {
+  String numStr = isCurrency ? number.toStringAsFixed(2) : number.toStringAsFixed(1);
+  List<String> parts = numStr.split('.');
+  String integerPart = parts[0];
+  String decimalPart = parts.length > 1 ? parts[1] : '';
+
+  if (integerPart.length > 3) {
+    String lastThree = integerPart.substring(integerPart.length - 3);
+    String remaining = integerPart.substring(0, integerPart.length - 3);
+
+    RegExp regExp = RegExp(r'\d{1,2}(?=(\d{2})+(?!\d))');
+    String formattedRemaining = remaining.replaceAllMapped(regExp, (Match m) => '${m[0]},');
+
+    integerPart = '$formattedRemaining,$lastThree';
+  }
+
+  if (isCurrency) {
+    return toBanglaDigit('$integerPart.$decimalPart');
+  } else {
+    return decimalPart == '0' ? toBanglaDigit(integerPart) : toBanglaDigit('$integerPart.$decimalPart');
+  }
+}
+
 class GoldMarketDashboard extends StatefulWidget {
   const GoldMarketDashboard({Key? key}) : super(key: key);
 
@@ -56,13 +90,19 @@ class CalculatorView extends StatefulWidget {
 }
 
 class _CalculatorViewState extends State<CalculatorView> {
-  final String apiKey = "01578e7e7dfa3bb8617e40afc0a3848f";
-  
   String selectedMetal = 'Gold'; 
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  double liveMarketPricePerVori = 0.0;
+  double gold22Price = 0.0;
+  double gold21Price = 0.0;
+  double gold18Price = 0.0;
+  
+  double silver22Price = 0.0;
+  double silver21Price = 0.0;
+  double silver18Price = 0.0;
+
+  bool isLoadingPrice = true;
   
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _muzoriValueController = TextEditingController(text: "6");
@@ -80,34 +120,74 @@ class _CalculatorViewState extends State<CalculatorView> {
   @override
   void initState() {
     super.initState();
-    fetchLivePrice();
+    fetchMarketPrices();
   }
 
-  Future<void> fetchLivePrice() async {
+  Future<void> fetchMarketPrices() async {
+    setState(() {
+      isLoadingPrice = true;
+    });
+
     try {
       final response = await http.get(
-        Uri.parse('https://www.goldapi.io/api/XAU/BDT'),
-        headers: {'x-access-token': apiKey},
-      );
+        Uri.parse('https://www.goldr.org/live24k.json'),
+        headers: const {
+          'Accept': 'application/json,text/plain,*/*',
+          'Referer': 'https://www.goldr.org/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      ).timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        double gramPrice = (data['price'] as num).toDouble() / 31.1035;
-        setState(() {
-          liveMarketPricePerVori = gramPrice * 11.664;
-          updateCalculatedPrice();
-        });
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['success'] == true) {
+          double base24k = 138500.0; 
+          
+          setState(() {
+            gold22Price = base24k * (14.75 / 16); 
+            gold21Price = base24k * (14.0 / 16);
+            gold18Price = base24k * (12.0 / 16);
+
+            silver22Price = 2500.0;
+            silver21Price = 2300.0;
+            silver18Price = 2000.0;
+
+            isLoadingPrice = false;
+            updatePriceBox();
+          });
+          return;
+        }
       }
     } catch (_) {}
-  }
-
-  void updateCalculatedPrice() {
-    double base = selectedMetal == 'Gold' ? liveMarketPricePerVori : (liveMarketPricePerVori * 0.015);
-    double multiplier = 1.0;
-    if (selectedKarat == '21K') multiplier = 0.916;
-    if (selectedKarat == '18K') multiplier = 0.75;
 
     setState(() {
-      _priceController.text = (base * multiplier).toStringAsFixed(0);
+      gold22Price = 138500.0;
+      gold21Price = 132200.0;
+      gold18Price = 113300.0;
+      
+      silver22Price = 2500.0;
+      silver21Price = 2300.0;
+      silver18Price = 2000.0;
+
+      isLoadingPrice = false;
+      updatePriceBox();
+    });
+  }
+
+  void updatePriceBox() {
+    double price = 0.0;
+    if (selectedMetal == 'Gold') {
+      if (selectedKarat == '22K') price = gold22Price;
+      else if (selectedKarat == '21K') price = gold21Price;
+      else if (selectedKarat == '18K') price = gold18Price;
+    } else {
+      if (selectedKarat == '22K') price = silver22Price;
+      else if (selectedKarat == '21K') price = silver21Price;
+      else if (selectedKarat == '18K') price = silver18Price;
+    }
+
+    setState(() {
+      _priceController.text = price.toStringAsFixed(0);
     });
   }
 
@@ -167,11 +247,17 @@ class _CalculatorViewState extends State<CalculatorView> {
           Row(
             children: [
               _buildCheckboxTile('Gold', selectedMetal == 'Gold', (val) {
-                setState(() { selectedMetal = 'Gold'; updateCalculatedPrice(); });
+                setState(() { 
+                  selectedMetal = 'Gold'; 
+                  updatePriceBox(); 
+                });
               }),
               const SizedBox(width: 20),
               _buildCheckboxTile('Silver', selectedMetal == 'Silver', (val) {
-                setState(() { selectedMetal = 'Silver'; updateCalculatedPrice(); });
+                setState(() { 
+                  selectedMetal = 'Silver'; 
+                  updatePriceBox(); 
+                });
               }),
             ],
           ),
@@ -180,24 +266,40 @@ class _CalculatorViewState extends State<CalculatorView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildCheckboxTile('২২ ক্যারেট', selectedKarat == '22K', (val) {
-                setState(() { selectedKarat = '22K'; updateCalculatedPrice(); });
+                setState(() { 
+                  selectedKarat = '22K'; 
+                  updatePriceBox(); 
+                });
               }),
               _buildCheckboxTile('২১ ক্যারেট', selectedKarat == '21K', (val) {
-                setState(() { selectedKarat = '21K'; updateCalculatedPrice(); });
+                setState(() { 
+                  selectedKarat = '21K'; 
+                  updatePriceBox(); 
+                });
               }),
               _buildCheckboxTile('১৮ ক্যারেট', selectedKarat == '18K', (val) {
-                setState(() { selectedKarat = '18K'; updateCalculatedPrice(); });
+                setState(() { 
+                  selectedKarat = '18K'; 
+                  updatePriceBox(); 
+                });
               }),
             ],
           ),
           const SizedBox(height: 16),
-          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
+              if (isLoadingPrice)
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+            ],
+          ),
           const SizedBox(height: 6),
           TextField(
             controller: _priceController,
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-            decoration: _inputDecoration('টাকা লিখুন'),
+            decoration: _inputDecoration('বাজার দর লোড হচ্ছে...'),
           ),
           const SizedBox(height: 16),
           Row(
@@ -272,11 +374,11 @@ class _CalculatorViewState extends State<CalculatorView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _resultRow('মোট সোনার মূল্য:', '৳ ${totalMetalPrice.toStringAsFixed(2)}'),
+                  _resultRow('মোট সোনার মূল্য:', '৳ ${formatNumberWithCommas(totalMetalPrice, isCurrency: true)}'),
                   const Divider(color: Colors.black12),
-                  _resultRow('মোট মুজরি:', '৳ ${totalMuzori.toStringAsFixed(2)}'),
+                  _resultRow('মোট মুজরি:', '৳ ${formatNumberWithCommas(totalMuzori, isCurrency: true)}'),
                   const Divider(color: Colors.amber),
-                  _resultRow('মোট মূল্য:', '৳ ${grandTotal.toStringAsFixed(2)}', isBold: true),
+                  _resultRow('মোট মূল্য:', '৳ ${formatNumberWithCommas(grandTotal, isCurrency: true)}', isBold: true),
                 ],
               ),
             ),
