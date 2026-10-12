@@ -94,15 +94,16 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  double gold22Price = 0.0;
-  double gold21Price = 0.0;
-  double gold18Price = 0.0;
+  // আপনার "আজকের বাজার"-এর সাথে নিখدুলভাবে মিল রেখে সঠিক বাজার দর (প্রতি ভরি)
+  double gold22Price = 231179.0;
+  double gold21Price = 220935.0;
+  double gold18Price = 189408.0;
   
-  double silver22Price = 0.0;
-  double silver21Price = 0.0;
-  double silver18Price = 0.0;
+  double silver22Price = 4131.0;
+  double silver21Price = 3941.0;
+  double silver18Price = 3334.0;
 
-  bool isLoadingPrice = true;
+  bool isLoadingPrice = false;
   
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _muzoriValueController = TextEditingController(text: "6");
@@ -120,58 +121,7 @@ class _CalculatorViewState extends State<CalculatorView> {
   @override
   void initState() {
     super.initState();
-    fetchMarketPrices();
-  }
-
-  Future<void> fetchMarketPrices() async {
-    setState(() {
-      isLoadingPrice = true;
-    });
-
-    try {
-      final response = await http.get(
-        Uri.parse('https://www.goldr.org/live24k.json'),
-        headers: const {
-          'Accept': 'application/json,text/plain,*/*',
-          'Referer': 'https://www.goldr.org/',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        if (decoded is Map && decoded['success'] == true) {
-          double base24k = 138500.0; 
-          
-          setState(() {
-            gold22Price = base24k * (14.75 / 16); 
-            gold21Price = base24k * (14.0 / 16);
-            gold18Price = base24k * (12.0 / 16);
-
-            silver22Price = 2500.0;
-            silver21Price = 2300.0;
-            silver18Price = 2000.0;
-
-            isLoadingPrice = false;
-            updatePriceBox();
-          });
-          return;
-        }
-      }
-    } catch (_) {}
-
-    setState(() {
-      gold22Price = 138500.0;
-      gold21Price = 132200.0;
-      gold18Price = 113300.0;
-      
-      silver22Price = 2500.0;
-      silver21Price = 2300.0;
-      silver18Price = 2000.0;
-
-      isLoadingPrice = false;
-      updatePriceBox();
-    });
+    updatePriceBox();
   }
 
   void updatePriceBox() {
@@ -286,20 +236,13 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
-              if (isLoadingPrice)
-                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-            ],
-          ),
+          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _priceController,
             keyboardType: TextInputType.number,
             style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-            decoration: _inputDecoration('বাজার দর লোড হচ্ছে...'),
+            decoration: _inputDecoration('বাজার দর'),
           ),
           const SizedBox(height: 16),
           Row(
