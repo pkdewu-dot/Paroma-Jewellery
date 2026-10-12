@@ -94,7 +94,6 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // আপনার "আজকের বাজার"-এর সাথে নিখدুলভাবে মিল রেখে সঠিক বাজার দর (প্রতি ভরি)
   double gold22Price = 231179.0;
   double gold21Price = 220935.0;
   double gold18Price = 189408.0;
@@ -103,8 +102,6 @@ class _CalculatorViewState extends State<CalculatorView> {
   double silver21Price = 3941.0;
   double silver18Price = 3334.0;
 
-  bool isLoadingPrice = false;
-  
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _muzoriValueController = TextEditingController(text: "6");
   
@@ -245,33 +242,41 @@ class _CalculatorViewState extends State<CalculatorView> {
             decoration: _inputDecoration('বাজার দর'),
           ),
           const SizedBox(height: 16),
+          // মুজরি সিলেকশন এবং তার পাশেই ইনপুট ঘর
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildCheckboxTile('ফিক্সড মুজরী', selectedMuzoriType == 'Fixed', (val) {
-                setState(() { selectedMuzoriType = 'Fixed'; _muzoriValueController.text = "500"; });
-              }),
-              _buildCheckboxTile('ভরি প্রতি মুজরী', selectedMuzoriType == 'PerVori', (val) {
-                setState(() { selectedMuzoriType = 'PerVori'; _muzoriValueController.text = "15000"; });
-              }),
-              _buildCheckboxTile('মুজরী %', selectedMuzoriType == 'Percent', (val) {
-                setState(() { selectedMuzoriType = 'Percent'; _muzoriValueController.text = "6"; });
-              }),
+              Expanded(
+                flex: 3,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildCheckboxTile('ফিক্সড', selectedMuzoriType == 'Fixed', (val) {
+                      setState(() { selectedMuzoriType = 'Fixed'; _muzoriValueController.text = "500"; });
+                    }),
+                    _buildCheckboxTile('ভরি প্রতি', selectedMuzoriType == 'PerVori', (val) {
+                      setState(() { selectedMuzoriType = 'PerVori'; _muzoriValueController.text = "15000"; });
+                    }),
+                    _buildCheckboxTile('মুজরি %', selectedMuzoriType == 'Percent', (val) {
+                      setState(() { selectedMuzoriType = 'Percent'; _muzoriValueController.text = "6"; });
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: _muzoriValueController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13),
+                  decoration: _inputDecoration('মান দিন'),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            selectedMuzoriType == 'Fixed' ? 'ফিক্সড মুজরী লিখুন' : (selectedMuzoriType == 'PerVori' ? 'প্রতি ভরি মুজরী লিখুন' : 'মুজরী % লিখুন'),
-            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: _muzoriValueController,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-            decoration: _inputDecoration('মূল্য বা পার্সেন্ট দিন'),
-          ),
           const SizedBox(height: 20),
+          const Text('গহনার ওজন', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
           Row(
             children: [
               Expanded(child: _buildWeightBox('কত ভরি তা লিখুন', _voriController)),
@@ -342,8 +347,10 @@ class _CalculatorViewState extends State<CalculatorView> {
             activeColor: Colors.amber.shade700,
             checkColor: Colors.white,
             onChanged: onChanged,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
           ),
-          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -367,10 +374,10 @@ class _CalculatorViewState extends State<CalculatorView> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.black38),
+      hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
       filled: true,
       fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.amber)),
     );
