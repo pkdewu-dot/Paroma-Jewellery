@@ -21,15 +21,16 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F12),
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF18181C),
-        title: const Text('স্বর্ণের মূল্য ক্যালকুলেটর', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFFF3B30),
+        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('স্বর্ণের মূল্য ক্যালকুলেটর', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.amber,
-          labelColor: Colors.amber,
-          unselectedLabelColor: Colors.white54,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
           tabs: const [
             Tab(text: 'ক্যালকুলেটর'),
             Tab(text: 'পাকা বিল'),
@@ -40,7 +41,7 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
         controller: _tabController,
         children: const [
           CalculatorView(),
-          Center(child: Text('পাকা বিল সেকশন খুব শীঘ্রই আসছে', style: TextStyle(color: Colors.white70))),
+          Center(child: Text('পাকা বিল সেকশন খুব শীঘ্রই আসছে', style: TextStyle(color: Colors.black87))),
         ],
       ),
     );
@@ -190,12 +191,12 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _priceController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
             decoration: _inputDecoration('টাকা লিখুন'),
           ),
           const SizedBox(height: 16),
@@ -216,13 +217,13 @@ class _CalculatorViewState extends State<CalculatorView> {
           const SizedBox(height: 16),
           Text(
             selectedMuzoriType == 'Fixed' ? 'ফিক্সড মুজরী লিখুন' : (selectedMuzoriType == 'PerVori' ? 'প্রতি ভরি মুজরী লিখুন' : 'মুজরী % লিখুন'),
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           TextField(
             controller: _muzoriValueController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
             decoration: _inputDecoration('মূল্য বা পার্সেন্ট দিন'),
           ),
           const SizedBox(height: 20),
@@ -247,13 +248,14 @@ class _CalculatorViewState extends State<CalculatorView> {
             height: 50,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: calculateBill,
               child: const Text(
                 'হিসাব করুন',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -262,15 +264,16 @@ class _CalculatorViewState extends State<CalculatorView> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E1E24),
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                border: Border.all(color: Colors.amber.shade700),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _resultRow('মোট সোনার মূল্য:', '৳ ${totalMetalPrice.toStringAsFixed(2)}'),
-                  const Divider(color: Colors.white10),
+                  const Divider(color: Colors.black12),
                   _resultRow('মোট মুজরি:', '৳ ${totalMuzori.toStringAsFixed(2)}'),
                   const Divider(color: Colors.amber),
                   _resultRow('মোট মূল্য:', '৳ ${grandTotal.toStringAsFixed(2)}', isBold: true),
@@ -291,11 +294,11 @@ class _CalculatorViewState extends State<CalculatorView> {
         children: [
           Checkbox(
             value: isSelected,
-            activeColor: Colors.amber,
-            checkColor: Colors.black,
+            activeColor: Colors.amber.shade700,
+            checkColor: Colors.white,
             onChanged: onChanged,
           ),
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 13)),
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -305,13 +308,13 @@ class _CalculatorViewState extends State<CalculatorView> {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.white, fontSize: 13),
+      style: const TextStyle(color: Colors.black87, fontSize: 13),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+        hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
         filled: true,
-        fillColor: const Color(0xFF18181C),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
       ),
     );
   }
@@ -319,11 +322,11 @@ class _CalculatorViewState extends State<CalculatorView> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white38),
+      hintStyle: const TextStyle(color: Colors.black38),
       filled: true,
-      fillColor: const Color(0xFF18181C),
+      fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.amber)),
     );
   }
@@ -334,8 +337,8 @@ class _CalculatorViewState extends State<CalculatorView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: isBold ? Colors.amber : Colors.white70, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(color: isBold ? Colors.amber : Colors.white, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(label, style: TextStyle(color: isBold ? Colors.black87 : Colors.black54, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: TextStyle(color: isBold ? Colors.green.shade800 : Colors.black87, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
         ],
       ),
     );
