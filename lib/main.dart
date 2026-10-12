@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'todays_market_page.dart';
+import 'gold_calculator_page.dart';
 
 void main() {
   runApp(const JewelleryApp());
@@ -33,7 +34,6 @@ class JewelleryApp extends StatelessWidget {
 
 // ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
 
-/// ইংরেজি সংখ্যাকে বাংলা ডিজিটে (০-৯) রূপান্তর করার ফাংশন
 String toBanglaDigit(String input) {
   const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
@@ -44,7 +44,6 @@ String toBanglaDigit(String input) {
   return input;
 }
 
-/// সংখ্যানুসারে বাংলাদেশি কমা ফরম্যাট করার ফাংশন
 String formatNumberWithCommas(double number, {bool isCurrency = false}) {
   String numStr = isCurrency ? number.toStringAsFixed(2) : number.toStringAsFixed(1);
   List<String> parts = numStr.split('.');
@@ -70,7 +69,6 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
 
 // ================= ২৪ ক্যারেট লাইভ দাম =================
 
-// GoldR-এর live 24K encrypted endpoint.
 const String _goldR24kUrl = 'https://www.goldr.org/live24k.json';
 const String _price24kCacheKey = 'paroma_24k_price_v3';
 const String _goldRHostKey = 'www.goldr.org';
@@ -119,7 +117,6 @@ Future<GoldR24kPrices?> fetchGoldR24kPrices() async {
     if (ivBytes.length != 16) return null;
     if (cipherBytes.isEmpty || cipherBytes.length % 16 != 0) return null;
 
-    // GoldR endpoint-এর key = SHA-256('www.goldr.org').
     final keyBytes = sha256.convert(utf8.encode(_goldRHostKey)).bytes;
 
     final encrypter = enc.Encrypter(
@@ -183,9 +180,7 @@ Future<void> _saveCached24kPrice(double price) async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_price24kCacheKey, price);
-  } catch (_) {
-    // Cache save fail হলেও live price দেখানো বন্ধ হবে না।
-  }
+  } catch (_) {}
 }
 
 // ================= ১. হোম স্ক্রিন =================
@@ -207,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _load24kPrice();
 
-    // Home screen খোলা থাকলে প্রতি ৫ মিনিটে আবার live price নেবে.
     _priceRefreshTimer = Timer.periodic(
       const Duration(minutes: 5),
       (_) => _load24kPrice(),
@@ -235,7 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // Internet/API সমস্যা হলে সর্বশেষ সফল price দেখাবে.
     final cachedPrice = await _loadCached24kPrice();
 
     if (!mounted) return;
@@ -246,7 +239,6 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  // হোম স্ক্রিনের ২৪K কার্ডে শুধু নাম দেখাবে; দাম বিস্তারিত পেজে থাকবে।
   String _get24kCardTitle() {
     return toBanglaDigit('২৪ ক্যারেট সোনার\nদাম');
   }
@@ -274,7 +266,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // কাস্টম অ্যাপ বার
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 color: const Color(0xFFFF3B30),
@@ -319,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const SizedBox(height: 12),
 
-                      // দোকানের নাম ও ঠিকানা সংবলিত ব্যানার
                       Container(
                         width: double.infinity,
                         margin: const EdgeInsets.symmetric(horizontal: 10),
@@ -363,7 +353,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 12),
 
-                      // নোটিফিকেশন বার
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 10),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -402,7 +391,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       const SizedBox(height: 12),
 
-                      // গ্রিড বাটনসমূহ
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: GridView.count(
@@ -432,6 +420,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               title: 'স্বর্ণের মূল্য\nক্যালকুলেটর',
                               icon: Icons.calculate_outlined,
                               iconColor: Colors.blue,
+                              targetScreen: const GoldMarketDashboard(),
                             ),
                             _buildWhiteCard(
                               context: context,
@@ -594,7 +583,6 @@ class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
   void initState() {
     super.initState();
     _refreshPrice();
-    // স্ক্রিন খোলা থাকলে প্রতি ১ মিনিটে নতুন দাম আনার চেষ্টা করবে।
     _autoRefreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) _refreshPrice();
     });
@@ -610,7 +598,6 @@ class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
     if (!mounted || _refreshInProgress) return;
     _refreshInProgress = true;
 
-    // আগে থেকে দাম থাকলে refresh চলাকালে সেটি স্ক্রিনে থাকবে।
     if (_price == null) {
       setState(() {
         _loading = true;
@@ -640,7 +627,6 @@ class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
       final cachedPrice = await _loadCached24kPrice();
       if (!mounted) return;
       setState(() {
-        // আগে থেকে live price থাকলে cache lookup ব্যর্থ হলেও সেটি মুছবে না।
         _price ??= cachedPrice;
         _loading = false;
         _message = _price == null
@@ -769,7 +755,6 @@ class _GoldR24KPriceScreenState extends State<GoldR24KPriceScreen> {
       ),
     );
   }
-
 }
 
 // ========== কারিগর খতিয়ান স্ক্রিন ==========
