@@ -186,6 +186,7 @@ class _CalculatorViewState extends State<CalculatorView> {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
+      textAlign: TextAlign.center, // লেখা মাঝখানে বিন্যাস করা হয়েছে
       style: const TextStyle(color: Colors.black87, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -240,21 +241,18 @@ class _CalculatorViewState extends State<CalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // স্কাই ব্লু কালার হেডিং বক্স ("নিচের অপশন থেকে সিলেক্ট করুন")
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             decoration: BoxDecoration(
-              color: Colors.amber,
+              color: Colors.lightBlue.shade200,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Row(
-              children: const [
-                Icon(Icons.calculate_rounded, color: Colors.black, size: 28),
-                SizedBox(width: 12),
-                Text(
-                  'হিসাব করুন',
-                  style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
+            child: const Text(
+              'নিচের অপশন থেকে সিলেক্ট করুন',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 16),
