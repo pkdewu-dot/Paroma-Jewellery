@@ -94,7 +94,7 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // ভিডিও অনুযায়ী সঠিক বাজার দর (প্রতি ভরি)
+  // সঠিক বাজার দর (প্রতি ভরি)
   final Map<String, Map<String, double>> marketPrices = {
     'Gold': {
       '22K': 228030.0,
@@ -130,12 +130,21 @@ class _CalculatorViewState extends State<CalculatorView> {
   void updatePriceBox() {
     double price = marketPrices[selectedMetal]?[selectedKarat] ?? 0.0;
     setState(() {
-      _priceController.text = price.toStringAsFixed(0);
+      // বাজার দর ইনপুট বক্সে বাংলা ও কমা ফরম্যাটে দেখানোর জন্য
+      _priceController.text = formatNumberWithCommas(price);
     });
   }
 
   void calculateBill() {
-    double pricePerVori = double.tryParse(_priceController.text) ?? 0.0;
+    // বাংলা ডিজিট বা কমাযুক্ত টেক্সটকে সংখ্যায় রূপান্তর করার জন্য ক্লিন করা
+    String cleanPriceStr = _priceController.text
+        .replaceAll(',', '')
+        .replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2')
+        .replaceAll('৩', '3').replaceAll('৪', '4').replaceAll('৫', '5')
+        .replaceAll('৬', '6').replaceAll('৭', '7').replaceAll('৮', '8')
+        .replaceAll('৯', '9');
+
+    double pricePerVori = double.tryParse(cleanPriceStr) ?? 0.0;
     
     double vori = double.tryParse(_voriController.text) ?? 0.0;
     double ana = double.tryParse(_anaController.text) ?? 0.0;
@@ -186,7 +195,7 @@ class _CalculatorViewState extends State<CalculatorView> {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      textAlign: TextAlign.center, // লেখা মাঝখানে বিন্যাস করা হয়েছে
+      textAlign: TextAlign.center,
       style: const TextStyle(color: Colors.black87, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
@@ -241,7 +250,6 @@ class _CalculatorViewState extends State<CalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // স্কাই ব্লু কালার হেডিং বক্স ("নিচের অপশন থেকে সিলেক্ট করুন")
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -339,7 +347,6 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 20),
-          // গহনার ওজন হেডিং (পার্পল কালার বক্স, বড় ফন্ট ও মাঝখানে বিন্যাস)
           Center(
             child: Container(
               width: double.infinity,
