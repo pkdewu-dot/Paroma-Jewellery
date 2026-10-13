@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'paka_bill_view.dart';
+import 'paka_bill_view.dart'; // পাকা বিল ফাইলটি এখানে যুক্ত করা হলো
 
 // ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
 String toBanglaDigit(String input) {
@@ -76,7 +76,7 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
         controller: _tabController,
         children: const [
           CalculatorView(),
-          PakaBillView(),
+          PakaBillView(), // পাকা বিল সফলভাবে এখানে যুক্ত করা হলো
         ],
       ),
     );
