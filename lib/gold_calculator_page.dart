@@ -94,13 +94,19 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  double gold22Price = 231179.0;
-  double gold21Price = 220935.0;
-  double gold18Price = 189408.0;
-  
-  double silver22Price = 4131.0;
-  double silver21Price = 3941.0;
-  double silver18Price = 3334.0;
+  // ভিডিওর চাহিদা অনুযায়ী আজকের বাজারের সঠিক রেট (প্রতি ভরি)
+  final Map<String, Map<String, double>> marketPrices = {
+    'Gold': {
+      '22K': 231179.0,
+      '21K': 220935.0,
+      '18K': 189408.0,
+    },
+    'Silver': {
+      '22K': 4131.0,
+      '21K': 3941.0,
+      '18K': 3334.0,
+    }
+  };
 
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _muzoriValueController = TextEditingController(text: "6");
@@ -122,17 +128,7 @@ class _CalculatorViewState extends State<CalculatorView> {
   }
 
   void updatePriceBox() {
-    double price = 0.0;
-    if (selectedMetal == 'Gold') {
-      if (selectedKarat == '22K') price = gold22Price;
-      else if (selectedKarat == '21K') price = gold21Price;
-      else if (selectedKarat == '18K') price = gold18Price;
-    } else {
-      if (selectedKarat == '22K') price = silver22Price;
-      else if (selectedKarat == '21K') price = silver21Price;
-      else if (selectedKarat == '18K') price = silver18Price;
-    }
-
+    double price = marketPrices[selectedMetal]?[selectedKarat] ?? 0.0;
     setState(() {
       _priceController.text = price.toStringAsFixed(0);
     });
@@ -173,24 +169,26 @@ class _CalculatorViewState extends State<CalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ১. হিসাব করুন হেডিং (বড় সাইজ)
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             decoration: BoxDecoration(
               color: Colors.amber,
               borderRadius: BorderRadius.circular(10),
             ),
             child: Row(
               children: const [
-                Icon(Icons.calculate_rounded, color: Colors.black, size: 24),
-                SizedBox(width: 10),
+                Icon(Icons.calculate_rounded, color: Colors.black, size: 28),
+                SizedBox(width: 12),
                 Text(
                   'হিসাব করুন',
-                  style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
+          // ২. Gold এবং Silver (বড় ফন্ট)
           Row(
             children: [
               _buildCheckboxTile('Gold', selectedMetal == 'Gold', (val) {
@@ -199,7 +197,7 @@ class _CalculatorViewState extends State<CalculatorView> {
                   updatePriceBox(); 
                 });
               }),
-              const SizedBox(width: 20),
+              const SizedBox(width: 30),
               _buildCheckboxTile('Silver', selectedMetal == 'Silver', (val) {
                 setState(() { 
                   selectedMetal = 'Silver'; 
@@ -233,20 +231,20 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
+          const Text('বর্তমান গহনার দাম (প্রতি ভরি)', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 6),
           TextField(
             controller: _priceController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+            style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 16),
             decoration: _inputDecoration('বাজার দর'),
           ),
           const SizedBox(height: 16),
-          // মুজরি সিলেকশন এবং তার পাশেই ইনপুট ঘর
+          // ৪. মুজরি টাইপ এবং ছোট ইনপুট বক্স
           Row(
             children: [
               Expanded(
-                flex: 3,
+                flex: 7,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -262,21 +260,32 @@ class _CalculatorViewState extends State<CalculatorView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 2,
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 75,
                 child: TextField(
                   controller: _muzoriValueController,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 13),
-                  decoration: _inputDecoration('মান দিন'),
+                  style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 14),
+                  decoration: _inputDecoration('মান'),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          const Text('গহনার ওজন', style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          // ৫. গহনার ওজন হেডিং (বড় ও হাইলাইটেড)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'গহনার ওজন',
+              style: TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(child: _buildWeightBox('কত ভরি তা লিখুন', _voriController)),
@@ -292,107 +301,3 @@ class _CalculatorViewState extends State<CalculatorView> {
               Expanded(child: _buildWeightBox('কত পয়েন্ট তা লিখুন', _pointController)),
             ],
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFD700),
-                foregroundColor: Colors.black,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: calculateBill,
-              child: const Text(
-                'হিসাব করুন',
-                style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          if (showResult) ...[
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.shade700),
-                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _resultRow('মোট সোনার মূল্য:', '৳ ${formatNumberWithCommas(totalMetalPrice, isCurrency: true)}'),
-                  const Divider(color: Colors.black12),
-                  _resultRow('মোট মুজরি:', '৳ ${formatNumberWithCommas(totalMuzori, isCurrency: true)}'),
-                  const Divider(color: Colors.amber),
-                  _resultRow('মোট মূল্য:', '৳ ${formatNumberWithCommas(grandTotal, isCurrency: true)}', isBold: true),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCheckboxTile(String title, bool isSelected, Function(bool?) onChanged) {
-    return InkWell(
-      onTap: () => onChanged(!isSelected),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Checkbox(
-            value: isSelected,
-            activeColor: Colors.amber.shade700,
-            checkColor: Colors.white,
-            onChanged: onChanged,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            visualDensity: VisualDensity.compact,
-          ),
-          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeightBox(String hint, TextEditingController controller) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      style: const TextStyle(color: Colors.black87, fontSize: 13),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.amber)),
-    );
-  }
-
-  Widget _resultRow(String label, String value, {bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: isBold ? Colors.black87 : Colors.black54, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: TextStyle(color: isBold ? Colors.green.shade800 : Colors.black87, fontSize: isBold ? 16 : 14, fontWeight: isBold ? FontWeight.bold : FontWeight.normal)),
-        ],
-      ),
-    );
-  }
-}
