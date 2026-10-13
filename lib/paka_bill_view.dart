@@ -1,15 +1,5 @@
 import 'package:flutter/material.dart';
 
-// বাংলা সংখ্যা কনভার্ট করার হেল্পার ফাংশন
-String toBanglaDigit(String input) {
-  const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-  const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-  for (int i = 0; i < englishDigits.length; i++) {
-    input = input.replaceAll(englishDigits[i], banglaDigits[i]);
-  }
-  return input;
-}
-
 class PakaBillView extends StatefulWidget {
   const PakaBillView({Key? key}) : super(key: key);
 
@@ -18,49 +8,47 @@ class PakaBillView extends StatefulWidget {
 }
 
 class _PakaBillViewState extends State<PakaBillView> {
+  // কাস্টমার তথ্য কন্ট্রোলার
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _customerPhoneController = TextEditingController();
   final TextEditingController _customerAddressController = TextEditingController();
+  final TextEditingController _orderNoController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
 
-  final TextEditingController _advGoldVori = TextEditingController(text: '০');
-  final TextEditingController _advGoldAna = TextEditingController(text: '০');
-  final TextEditingController _advGoldRoti = TextEditingController(text: '০');
-  final TextEditingController _advGoldPoint = TextEditingController(text: '০');
+  // অগ্রিম স্বর্ণ (ভরি, আনা, রতি, পয়েন্ট)
+  final TextEditingController _advGoldVori = TextEditingController(text: '0');
+  final TextEditingController _advGoldAna = TextEditingController(text: '0');
+  final TextEditingController _advGoldRoti = TextEditingController(text: '0');
+  final TextEditingController _advGoldPoint = TextEditingController(text: '0');
 
-  final TextEditingController _advCashController = TextEditingController(text: '০');
+  // অগ্রিম নগদ টাকা
+  final TextEditingController _advCashController = TextEditingController(text: '0');
 
+  // ৪টি রো গহনার বিবরণ (বিবরণ, ক্যারেট, ভরি, আনা, রতি, পয়েন্ট, প্রতি ভরি দাম, মুজরি)
   final List<Map<String, TextEditingController>> _itemRows = List.generate(4, (_) => {
     'desc': TextEditingController(),
     'karat': TextEditingController(text: '২২ ক্যারেট'),
-    'vori': TextEditingController(text: '০'),
-    'ana': TextEditingController(text: '০'),
-    'roti': TextEditingController(text: '০'),
-    'point': TextEditingController(text: '০'),
-    'pricePerVori': TextEditingController(text: '২২৮০৩০'),
-    'makingCharge': TextEditingController(text: '০'),
+    'vori': TextEditingController(text: '0'),
+    'ana': TextEditingController(text: '0'),
+    'roti': TextEditingController(text: '0'),
+    'point': TextEditingController(text: '0'),
+    'pricePerVori': TextEditingController(text: '228030'),
+    'makingCharge': TextEditingController(text: '0'),
   });
 
+  // হিসাবের ফলাফল ভ্যারিয়েবল
   double totalWeightVori = 0.0;
   double totalNetWeightVori = 0.0;
+  double totalNetValue = 0.0;
+  double totalMakingCharge = 0.0;
   double grandTotal = 0.0;
 
   @override
   void initState() {
     super.initState();
+    // অ্যাপ চালু হওয়ার সাথেই আজকের তারিখ অটোমেটিক সেট হয়ে যাবে (যেমন: DD/MM/YYYY ফরম্যাটে)
     DateTime now = DateTime.now();
-    String engDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
-    _dateController.text = toBanglaDigit(engDate);
-  }
-
-  double _parseNum(String val) {
-    String clean = val
-        .replaceAll(',', '')
-        .replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2')
-        .replaceAll('৩', '3').replaceAll('৪', '4').replaceAll('৫', '5')
-        .replaceAll('৬', '6').replaceAll('৭', '7').replaceAll('৮', '8')
-        .replaceAll('৯', '9');
-    return double.tryParse(clean) ?? 0.0;
+    _dateController.text = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
   }
 
   void _calculateBill() {
@@ -69,12 +57,12 @@ class _PakaBillViewState extends State<PakaBillView> {
     double tempTotalMaking = 0.0;
 
     for (var row in _itemRows) {
-      double vori = _parseNum(row['vori']!.text);
-      double ana = _parseNum(row['ana']!.text);
-      double roti = _parseNum(row['roti']!.text);
-      double point = _parseNum(row['point']!.text);
-      double pricePerVori = _parseNum(row['pricePerVori']!.text);
-      double making = _parseNum(row['makingCharge']!.text);
+      double vori = double.tryParse(row['vori']!.text) ?? 0.0;
+      double ana = double.tryParse(row['ana']!.text) ?? 0.0;
+      double roti = double.tryParse(row['roti']!.text) ?? 0.0;
+      double point = double.tryParse(row['point']!.text) ?? 0.0;
+      double pricePerVori = double.tryParse(row['pricePerVori']!.text) ?? 0.0;
+      double making = double.tryParse(row['makingCharge']!.text) ?? 0.0;
 
       double itemVoriEq = vori + (ana / 16) + (roti / 96) + (point / 1000);
       tempTotalWeight += itemVoriEq;
@@ -82,39 +70,42 @@ class _PakaBillViewState extends State<PakaBillView> {
       tempTotalMaking += making;
     }
 
-    double advV = _parseNum(_advGoldVori.text);
-    double advA = _parseNum(_advGoldAna.text);
-    double advR = _parseNum(_advGoldRoti.text);
-    double advP = _parseNum(_advGoldPoint.text);
+    // অগ্রিম স্বর্ণ হিসাব
+    double advV = double.tryParse(_advGoldVori.text) ?? 0.0;
+    double advA = double.tryParse(_advGoldAna.text) ?? 0.0;
+    double advR = double.tryParse(_advGoldRoti.text) ?? 0.0;
+    double advP = double.tryParse(_advGoldPoint.text) ?? 0.0;
     double advGoldEq = advV + (advA / 16) + (advR / 96) + (advP / 1000);
 
     double netWt = tempTotalWeight - advGoldEq;
     if (netWt < 0) netWt = 0;
 
-    double advCash = _parseNum(_advCashController.text);
+    double advCash = double.tryParse(_advCashController.text) ?? 0.0;
     double finalGrand = tempTotalValue - advCash + tempTotalMaking;
     if (finalGrand < 0) finalGrand = 0;
 
     setState(() {
       totalWeightVori = tempTotalWeight;
       totalNetWeightVori = netWt;
+      totalNetValue = tempTotalValue;
+      totalMakingCharge = tempTotalMaking;
       grandTotal = finalGrand;
     });
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, double fontSize = 13}) {
+  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false}) {
     return TextField(
       controller: controller,
       keyboardType: isNumber ? TextInputType.number : TextInputType.text,
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(fontSize: 11, color: Colors.brown),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        labelStyle: const TextStyle(fontSize: 12, color: Colors.brown),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
         filled: true,
         fillColor: Colors.white,
       ),
-      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+      style: const TextStyle(fontSize: 13),
       onChanged: (_) => _calculateBill(),
     );
   }
@@ -122,7 +113,7 @@ class _PakaBillViewState extends State<PakaBillView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1),
+      backgroundColor: const Color(0xFFFFF8E1), // হালকা সোনালী/হলুদ ব্যাকগ্রাউন্ড
       appBar: AppBar(
         backgroundColor: const Color(0xFF8D6E63),
         title: const Text('পরমা জুয়েলার্স - পাকা বিল', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -133,6 +124,7 @@ class _PakaBillViewState extends State<PakaBillView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // দোকানের হেডার
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
@@ -142,15 +134,17 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
               child: const Column(
                 children: [
-                  Text('পরমা জুয়েলার্স', style: TextStyle(color: Color(0xFFFFD700), fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text('পরমা জুয়েলার্স', style: TextStyle(color: Color(0xFFFFD700), fontSize: 20, fontWeight: FontWeight.bold)),
                   SizedBox(height: 4),
-                  Text('কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  Text('কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর', style: TextStyle(color: Colors.white70, fontSize: 13)),
                   SizedBox(height: 2),
-                  Text('পাকা ক্যাশ মেমো / বিল', style: TextStyle(color: Colors.amberAccent, fontSize: 15, fontWeight: FontWeight.bold)),
+                  Text('পাকা ক্যাশ মেমো / বিল', style: TextStyle(color: Colors.amberAccent, fontSize: 14, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
             const SizedBox(height: 12),
+
+            // কাস্টমার তথ্য কার্ড
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -163,18 +157,17 @@ class _PakaBillViewState extends State<PakaBillView> {
                     const Divider(height: 10),
                     Row(
                       children: [
-                        Expanded(flex: 3, child: _buildTextField('গ্রাহকের নাম', _customerNameController)),
+                        Expanded(flex: 2, child: _buildTextField('গ্রাহকের নাম', _customerNameController)),
                         const SizedBox(width: 8),
-                        Expanded(flex: 2, child: _buildTextField('মোবাইল নং', _customerPhoneController, isNumber: true)),
+                        Expanded(flex: 1, child: _buildTextField('মোবাইল নং', _customerPhoneController, isNumber: true)),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(flex: 3, child: _buildTextField('ঠিকানা', _customerAddressController)),
+                        Expanded(flex: 2, child: _buildTextField('ঠিকানা', _customerAddressController)),
                         const SizedBox(width: 8),
-                        // ফ্লেক্স ত্রুটি ঠিক করার জন্য এখানে পূর্ণসংখ্যা (1) ব্যবহার করা হয়েছে
-                        Expanded(flex: 1, child: _buildTextField('তাং', _dateController)),
+                        Expanded(flex: 1, child: _buildTextField('তারিখ', _dateController)),
                       ],
                     ),
                   ],
@@ -182,6 +175,8 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 10),
+
+            // গহনার বিবরণ (৪টি রো)
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -209,7 +204,7 @@ class _PakaBillViewState extends State<PakaBillView> {
                               children: [
                                 Expanded(flex: 2, child: _buildTextField('পণ্যের বিবরণ #${index + 1}', row['desc']!)),
                                 const SizedBox(width: 6),
-                                Expanded(flex: 1, child: _buildTextField('মূল্য/ভরি', row['pricePerVori']!, isNumber: true, fontSize: 16)),
+                                Expanded(flex: 1, child: _buildTextField('মূল্য/ভরি', row['pricePerVori']!, isNumber: true)),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -235,6 +230,8 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 10),
+
+            // অগ্রিম জমা কার্ড
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -265,8 +262,10 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 15),
+
+            // হিসাব ফলাফল সেকশন
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
@@ -277,33 +276,35 @@ class _PakaBillViewState extends State<PakaBillView> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('মোট ওজন:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('${toBanglaDigit(totalWeightVori.toStringAsFixed(3))} ভরি', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      const Text('মোট ওজন:', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('${totalWeightVori.toStringAsFixed(3)} ভরি', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const Divider(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('নিট ওজন (বাদ অগ্রিম):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 18)),
-                      Text('${toBanglaDigit(totalNetWeightVori.toStringAsFixed(3))} ভরি', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 18)),
+                      const Text('নিট ওজন (বাদ অগ্রিম):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
+                      Text('${totalNetWeightVori.toStringAsFixed(3)} ভরি', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.brown)),
                     ],
                   ),
-                  const Divider(thickness: 1.5),
+                  const Divider(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('সর্বমোট মূল্য:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
-                      Text('৳ ${toBanglaDigit(grandTotal.toStringAsFixed(2))}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green)),
+                      const Text('সর্বমোট মূল্য:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green)),
+                      Text('৳ ${grandTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
                     ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
+
+            // হিসাব করুন বাটন
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: 45,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF8D6E63),
@@ -311,7 +312,7 @@ class _PakaBillViewState extends State<PakaBillView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
                 onPressed: _calculateBill,
-                child: const Text('হিসাব আপডেট করুন', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                child: const Text('হিসাব আপডেট করুন', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
