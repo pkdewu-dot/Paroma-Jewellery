@@ -94,16 +94,17 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
+  // অ্যাপের ডেটা সোর্স থেকে সরাসরি সঠিক বাজার দর (প্রতি ভরি)
   final Map<String, Map<String, double>> marketPrices = {
     'Gold': {
       '22K': 231179.0,
-      '21K': 220935.0,
-      '18K': 189408.0,
+      '21K': 217000.0,
+      '18K': 187032.0,
     },
     'Silver': {
-      '22K': 4131.0,
-      '21K': 3941.0,
-      '18K': 3334.0,
+      '22K': 4199.0,
+      '21K': 3966.0,
+      '18K': 3441.0,
     }
   };
 
@@ -215,9 +216,9 @@ class _CalculatorViewState extends State<CalculatorView> {
         Text(
           label, 
           style: TextStyle(
-            color: isBold ? (textColor ?? Colors.black87) : Colors.black54, 
+            color: isBold ? (textColor ?? Colors.black87) : Colors.black87, 
             fontSize: fontSize, 
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w500
+            fontWeight: FontWeight.bold // সব লেবেল বোল্ড করা হলো
           )
         ),
         Text(
@@ -225,7 +226,7 @@ class _CalculatorViewState extends State<CalculatorView> {
           style: TextStyle(
             color: isBold ? (textColor ?? Colors.green.shade800) : Colors.black87, 
             fontSize: fontSize, 
-            fontWeight: isBold ? FontWeight.bold : FontWeight.w600
+            fontWeight: FontWeight.bold // সব মান বোল্ড করা হলো
           )
         ),
       ],
@@ -397,9 +398,9 @@ class _CalculatorViewState extends State<CalculatorView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _resultRow('মোট সোনার মূল্য:', '৳ ${formatNumberWithCommas(totalMetalPrice, isCurrency: true)}', fontSize: 15),
+                  _resultRow('মোট সোনার মূল্য:', formatNumberWithCommas(totalMetalPrice, isCurrency: true), fontSize: 15),
                   const Divider(color: Colors.black12, height: 16),
-                  _resultRow('মোট মুজরি:', '৳ ${formatNumberWithCommas(totalMuzori, isCurrency: true)}', fontSize: 15),
+                  _resultRow('মোট মুজরি:', formatNumberWithCommas(totalMuzori, isCurrency: true), fontSize: 15),
                   const Divider(color: Colors.amber, height: 16, thickness: 1.5),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
@@ -407,7 +408,7 @@ class _CalculatorViewState extends State<CalculatorView> {
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: _resultRow('মোট মূল্য:', '৳ ${formatNumberWithCommas(grandTotal, isCurrency: true)}', isBold: true, fontSize: 18, textColor: Colors.green.shade900),
+                    child: _resultRow('মোট মূল্য:', formatNumberWithCommas(grandTotal, isCurrency: true), isBold: true, fontSize: 18, textColor: Colors.green.shade900),
                   ),
                 ],
               ),
