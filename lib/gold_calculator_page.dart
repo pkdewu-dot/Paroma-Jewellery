@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'paka_bill_view.dart';
 
 // ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
 String toBanglaDigit(String input) {
@@ -75,7 +76,7 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
         controller: _tabController,
         children: const [
           CalculatorView(),
-          Center(child: Text('পাকা বিল সেকশন খুব শীঘ্রই আসছে', style: TextStyle(color: Colors.black87))),
+          PakaBillView(),
         ],
       ),
     );
@@ -130,13 +131,11 @@ class _CalculatorViewState extends State<CalculatorView> {
   void updatePriceBox() {
     double price = marketPrices[selectedMetal]?[selectedKarat] ?? 0.0;
     setState(() {
-      // বাজার দর ইনপুট বক্সে বাংলা ও কমা ফরম্যাটে দেখানোর জন্য
       _priceController.text = formatNumberWithCommas(price);
     });
   }
 
   void calculateBill() {
-    // বাংলা ডিজিট বা কমাযুক্ত টেক্সটকে সংখ্যায় রূপান্তর করার জন্য ক্লিন করা
     String cleanPriceStr = _priceController.text
         .replaceAll(',', '')
         .replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2')
