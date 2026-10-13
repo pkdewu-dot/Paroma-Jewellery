@@ -94,11 +94,11 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // অ্যাপের ডেটা সোর্স থেকে সরাসরি সঠিক বাজার দর (প্রতি ভরি)
+  // ভিডিও অনুযায়ী সঠিক বাজার দর (প্রতি ভরি)
   final Map<String, Map<String, double>> marketPrices = {
     'Gold': {
-      '22K': 231179.0,
-      '21K': 217000.0,
+      '22K': 228030.0,
+      '21K': 217777.0,
       '18K': 187032.0,
     },
     'Silver': {
@@ -218,7 +218,7 @@ class _CalculatorViewState extends State<CalculatorView> {
           style: TextStyle(
             color: isBold ? (textColor ?? Colors.black87) : Colors.black87, 
             fontSize: fontSize, 
-            fontWeight: FontWeight.bold // সব লেবেল বোল্ড করা হলো
+            fontWeight: FontWeight.bold 
           )
         ),
         Text(
@@ -226,7 +226,7 @@ class _CalculatorViewState extends State<CalculatorView> {
           style: TextStyle(
             color: isBold ? (textColor ?? Colors.green.shade800) : Colors.black87, 
             fontSize: fontSize, 
-            fontWeight: FontWeight.bold // সব মান বোল্ড করা হলো
+            fontWeight: FontWeight.bold 
           )
         ),
       ],
@@ -341,18 +341,24 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'গহনার ওজন',
-              style: TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.bold),
+          // গহনার ওজন হেডিং (পার্পল কালার বক্স, বড় ফন্ট ও মাঝখানে বিন্যাস)
+          Center(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.purple.shade200),
+              ),
+              child: const Text(
+                'গহনার ওজন',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.purple, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(child: _buildWeightBox('কত ভরি তা লিখুন', _voriController)),
