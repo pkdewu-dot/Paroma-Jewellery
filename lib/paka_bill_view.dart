@@ -48,13 +48,11 @@ class _PakaBillViewState extends State<PakaBillView> {
   @override
   void initState() {
     super.initState();
-    // অটোমেটিক আজকের তারিখ দিন/মাস/বছর ফরম্যাটে এবং বাংলা ডিজিটে সেট করা
     DateTime now = DateTime.now();
     String engDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
     _dateController.text = toBanglaDigit(engDate);
   }
 
-  // বাংলা/ইংরেজি সংখ্যাকে ডাবল এ রূপান্তর করার হেল্পার
   double _parseNum(String val) {
     String clean = val
         .replaceAll(',', '')
@@ -135,7 +133,6 @@ class _PakaBillViewState extends State<PakaBillView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // দোকানের হেডার (সঠিক বানান সহ)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(10),
@@ -154,8 +151,6 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 12),
-
-            // কাস্টমার তথ্য কার্ড
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -178,7 +173,8 @@ class _PakaBillViewState extends State<PakaBillView> {
                       children: [
                         Expanded(flex: 3, child: _buildTextField('ঠিকানা', _customerAddressController)),
                         const SizedBox(width: 8),
-                        Expanded(flex: 1.5, child: _buildTextField('তাং', _dateController)),
+                        // ফ্লেক্স ত্রুটি ঠিক করার জন্য এখানে পূর্ণসংখ্যা (1) ব্যবহার করা হয়েছে
+                        Expanded(flex: 1, child: _buildTextField('তাং', _dateController)),
                       ],
                     ),
                   ],
@@ -186,8 +182,6 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // গহনার বিবরণ
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -241,8 +235,6 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 10),
-
-            // অগ্রিম জমা কার্ড
             Card(
               elevation: 3,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -273,8 +265,6 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 15),
-
-            // হিসাব ফলাফল সেকশন
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -311,8 +301,6 @@ class _PakaBillViewState extends State<PakaBillView> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // হিসাব আপডেট করুন বাটন
             SizedBox(
               width: double.infinity,
               height: 48,
