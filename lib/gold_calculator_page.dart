@@ -215,7 +215,7 @@ class _CalculatorViewState extends State<CalculatorView> {
         Text(
           label, 
           style: TextStyle(
-            color: isBold ? (textColor ?? Colors.black87) : Colors.black64, 
+            color: isBold ? (textColor ?? Colors.black87) : Colors.black54, 
             fontSize: fontSize, 
             fontWeight: isBold ? FontWeight.bold : FontWeight.w500
           )
