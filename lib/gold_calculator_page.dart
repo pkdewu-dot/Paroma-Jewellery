@@ -94,7 +94,6 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // ভিডিওর চাহিদা অনুযায়ী আজকের বাজারের সঠিক রেট (প্রতি ভরি)
   final Map<String, Map<String, double>> marketPrices = {
     'Gold': {
       '22K': 231179.0,
@@ -162,6 +161,77 @@ class _CalculatorViewState extends State<CalculatorView> {
     });
   }
 
+  Widget _buildCheckboxTile(String title, bool isSelected, Function(bool?) onChanged) {
+    return InkWell(
+      onTap: () => onChanged(!isSelected),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Checkbox(
+            value: isSelected,
+            activeColor: Colors.amber.shade700,
+            checkColor: Colors.white,
+            onChanged: onChanged,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeightBox(String hint, TextEditingController controller) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      style: const TextStyle(color: Colors.black87, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.amber)),
+    );
+  }
+
+  Widget _resultRow(String label, String value, {bool isBold = false, double fontSize = 14, Color? textColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label, 
+          style: TextStyle(
+            color: isBold ? (textColor ?? Colors.black87) : Colors.black64, 
+            fontSize: fontSize, 
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w500
+          )
+        ),
+        Text(
+          value, 
+          style: TextStyle(
+            color: isBold ? (textColor ?? Colors.green.shade800) : Colors.black87, 
+            fontSize: fontSize, 
+            fontWeight: isBold ? FontWeight.bold : FontWeight.w600
+          )
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -169,7 +239,6 @@ class _CalculatorViewState extends State<CalculatorView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ১. হিসাব করুন হেডিং (বড় সাইজ)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             decoration: BoxDecoration(
@@ -188,7 +257,6 @@ class _CalculatorViewState extends State<CalculatorView> {
             ),
           ),
           const SizedBox(height: 16),
-          // ২. Gold এবং Silver (বড় ফন্ট)
           Row(
             children: [
               _buildCheckboxTile('Gold', selectedMetal == 'Gold', (val) {
@@ -240,7 +308,6 @@ class _CalculatorViewState extends State<CalculatorView> {
             decoration: _inputDecoration('বাজার দর'),
           ),
           const SizedBox(height: 16),
-          // ৪. মুজরি টাইপ এবং ছোট ইনপুট বক্স
           Row(
             children: [
               Expanded(
@@ -273,7 +340,6 @@ class _CalculatorViewState extends State<CalculatorView> {
             ],
           ),
           const SizedBox(height: 20),
-          // ৫. গহনার ওজন হেডিং (বড় ও হাইলাইটেড)
           Container(
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
             decoration: BoxDecoration(
@@ -301,3 +367,54 @@ class _CalculatorViewState extends State<CalculatorView> {
               Expanded(child: _buildWeightBox('কত পয়েন্ট তা লিখুন', _pointController)),
             ],
           ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFFD700),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: calculateBill,
+              child: const Text(
+                'হিসাব করুন',
+                style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          if (showResult) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.amber.shade700, width: 1.5),
+                boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _resultRow('মোট সোনার মূল্য:', '৳ ${formatNumberWithCommas(totalMetalPrice, isCurrency: true)}', fontSize: 15),
+                  const Divider(color: Colors.black12, height: 16),
+                  _resultRow('মোট মুজরি:', '৳ ${formatNumberWithCommas(totalMuzori, isCurrency: true)}', fontSize: 15),
+                  const Divider(color: Colors.amber, height: 16, thickness: 1.5),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: _resultRow('মোট মূল্য:', '৳ ${formatNumberWithCommas(grandTotal, isCurrency: true)}', isBold: true, fontSize: 18, textColor: Colors.green.shade900),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
