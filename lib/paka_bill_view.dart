@@ -1,37 +1,13 @@
 import 'package:flutter/material.dart';
 
-// ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
+// বাংলা সংখ্যা কনভার্ট করার হেল্পার ফাংশন
 String toBanglaDigit(String input) {
   const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   const banglaDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
-
   for (int i = 0; i < englishDigits.length; i++) {
     input = input.replaceAll(englishDigits[i], banglaDigits[i]);
   }
   return input;
-}
-
-String formatNumberWithCommas(double number, {bool isCurrency = false}) {
-  String numStr = isCurrency ? number.toStringAsFixed(2) : number.toStringAsFixed(1);
-  List<String> parts = numStr.split('.');
-  String integerPart = parts[0];
-  String decimalPart = parts.length > 1 ? parts[1] : '';
-
-  if (integerPart.length > 3) {
-    String lastThree = integerPart.substring(integerPart.length - 3);
-    String remaining = integerPart.substring(0, integerPart.length - 3);
-
-    RegExp regExp = RegExp(r'\d{1,2}(?=(\d{2})+(?!\d))');
-    String formattedRemaining = remaining.replaceAllMapped(regExp, (Match m) => '${m[0]},');
-
-    integerPart = '$formattedRemaining,$lastThree';
-  }
-
-  if (isCurrency) {
-    return toBanglaDigit('$integerPart.$decimalPart');
-  } else {
-    return decimalPart == '0' ? toBanglaDigit(integerPart) : toBanglaDigit('$integerPart.$decimalPart');
-  }
 }
 
 class PakaBillView extends StatefulWidget {
@@ -42,572 +18,317 @@ class PakaBillView extends StatefulWidget {
 }
 
 class _PakaBillViewState extends State<PakaBillView> {
-  // কালার থিম
-  final Color primaryBrown = const Color(0xFF7A4A12);
-  final Color cardBackground = const Color(0xFFFAF4E8);
-  final Color headerBorderColor = const Color(0xFF8D5B28);
-
-  // কাস্টমার ইনফো কন্ট্রোলার
-  final TextEditingController _orderNoController = TextEditingController();
-  final TextEditingController _dateController = TextEditingController(text: "12/10/2026");
   final TextEditingController _customerNameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _customerPhoneController = TextEditingController();
+  final TextEditingController _customerAddressController = TextEditingController();
+  final TextEditingController _dateController = TextEditingController();
 
-  String selectedKarat = '22k';
-  double marketPricePerVori = 228030.0;
+  final TextEditingController _advGoldVori = TextEditingController(text: '০');
+  final TextEditingController _advGoldAna = TextEditingController(text: '০');
+  final TextEditingController _advGoldRoti = TextEditingController(text: '০');
+  final TextEditingController _advGoldPoint = TextEditingController(text: '০');
 
-  // অগ্রিম জমা
-  final TextEditingController _advanceCashController = TextEditingController();
-  String advanceGoldKarat = '22k';
-  final TextEditingController _advVoriController = TextEditingController();
-  final TextEditingController _advAnaController = TextEditingController();
-  final TextEditingController _advRotiController = TextEditingController();
-  final TextEditingController _advPointController = TextEditingController();
+  final TextEditingController _advCashController = TextEditingController(text: '০');
 
-  // গহনার বিস্তারিত (৪টি রো)
-  List<TextEditingController> descControllers = List.generate(4, (_) => TextEditingController());
-  List<String> rowKarats = List.generate(4, (_) => '22k');
-  List<TextEditingController> voriControllers = List.generate(4, (_) => TextEditingController());
-  List<TextEditingController> anaControllers = List.generate(4, (_) => TextEditingController());
-  List<TextEditingController> rotiControllers = List.generate(4, (_) => TextEditingController());
-  List<TextEditingController> pointControllers = List.generate(4, (_) => TextEditingController());
+  final List<Map<String, TextEditingController>> _itemRows = List.generate(4, (_) => {
+    'desc': TextEditingController(),
+    'karat': TextEditingController(text: '২২ ক্যারেট'),
+    'vori': TextEditingController(text: '০'),
+    'ana': TextEditingController(text: '০'),
+    'roti': TextEditingController(text: '০'),
+    'point': TextEditingController(text: '০'),
+    'pricePerVori': TextEditingController(text: '২২৮০৩০'),
+    'makingCharge': TextEditingController(text: '০'),
+  });
 
-  // মেকিং চার্জ
-  final TextEditingController _makingChargeController = TextEditingController();
-
-  // বাজার দর ম্যাপ
-  final Map<String, double> goldPrices = {
-    '22k': 228030.0,
-    '21k': 217777.0,
-    '18k': 187032.0,
-  };
+  double totalWeightVori = 0.0;
+  double totalNetWeightVori = 0.0;
+  double grandTotal = 0.0;
 
   @override
   void initState() {
     super.initState();
-    marketPricePerVori = goldPrices[selectedKarat] ?? 228030.0;
+    // অটোমেটিক আজকের তারিখ দিন/মাস/বছর ফরম্যাটে এবং বাংলা ডিজিটে সেট করা
+    DateTime now = DateTime.now();
+    String engDate = "${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}";
+    _dateController.text = toBanglaDigit(engDate);
   }
 
-  void _onKaratChanged(String? newKarat) {
-    if (newKarat != null) {
-      setState(() {
-        selectedKarat = newKarat;
-        marketPricePerVori = goldPrices[selectedKarat] ?? 228030.0;
-      });
+  // বাংলা/ইংরেজি সংখ্যাকে ডাবল এ রূপান্তর করার হেল্পার
+  double _parseNum(String val) {
+    String clean = val
+        .replaceAll(',', '')
+        .replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2')
+        .replaceAll('৩', '3').replaceAll('৪', '4').replaceAll('৫', '5')
+        .replaceAll('৬', '6').replaceAll('৭', '7').replaceAll('৮', '8')
+        .replaceAll('৯', '9');
+    return double.tryParse(clean) ?? 0.0;
+  }
+
+  void _calculateBill() {
+    double tempTotalWeight = 0.0;
+    double tempTotalValue = 0.0;
+    double tempTotalMaking = 0.0;
+
+    for (var row in _itemRows) {
+      double vori = _parseNum(row['vori']!.text);
+      double ana = _parseNum(row['ana']!.text);
+      double roti = _parseNum(row['roti']!.text);
+      double point = _parseNum(row['point']!.text);
+      double pricePerVori = _parseNum(row['pricePerVori']!.text);
+      double making = _parseNum(row['makingCharge']!.text);
+
+      double itemVoriEq = vori + (ana / 16) + (roti / 96) + (point / 1000);
+      tempTotalWeight += itemVoriEq;
+      tempTotalValue += (itemVoriEq * pricePerVori);
+      tempTotalMaking += making;
     }
+
+    double advV = _parseNum(_advGoldVori.text);
+    double advA = _parseNum(_advGoldAna.text);
+    double advR = _parseNum(_advGoldRoti.text);
+    double advP = _parseNum(_advGoldPoint.text);
+    double advGoldEq = advV + (advA / 16) + (advR / 96) + (advP / 1000);
+
+    double netWt = tempTotalWeight - advGoldEq;
+    if (netWt < 0) netWt = 0;
+
+    double advCash = _parseNum(_advCashController.text);
+    double finalGrand = tempTotalValue - advCash + tempTotalMaking;
+    if (finalGrand < 0) finalGrand = 0;
+
+    setState(() {
+      totalWeightVori = tempTotalWeight;
+      totalNetWeightVori = netWt;
+      grandTotal = finalGrand;
+    });
   }
 
-  // ওজন কনভার্সন ফাংশন (মোট পয়েন্টে রূপান্তর)
-  double _convertToTotalPoints(double vori, double ana, double roti, double point) {
-    return (vori * 16 * 6 * 10) + (ana * 6 * 10) + (roti * 10) + point;
-  }
-
-  // পয়েন্ট থেকে ভরি, আনা, রতি, পয়েন্ট অবজেক্ট
-  String _formatPointsToWeightString(double totalPoints) {
-    if (totalPoints <= 0) return "০.০০ ভরি";
-    
-    int pts = totalPoints.round();
-    int vori = pts ~/ 960;
-    pts %= 960;
-    int ana = pts ~/ 60;
-    pts %= 60;
-    int roti = pts ~/ 10;
-    int point = pts % 10;
-
-    String res = "";
-    if (vori > 0) res += "${toBanglaDigit(vori.toString())} ভরি ";
-    if (ana > 0) res += "${toBanglaDigit(ana.toString())} আনা ";
-    if (roti > 0) res += "${toBanglaDigit(roti.toString())} রতি ";
-    if (point > 0) res += "${toBanglaDigit(point.toString())} পয়েন্ট";
-    
-    return res.isEmpty ? "০ ভরি" : res.trim();
+  Widget _buildTextField(String label, TextEditingController controller, {bool isNumber = false, double fontSize = 13}) {
+    return TextField(
+      controller: controller,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 11, color: Colors.brown),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold),
+      onChanged: (_) => _calculateBill(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // ১. মোট ওজনের হিসাব
-    double totalJewelryPoints = 0;
-    for (int i = 0; i < 4; i++) {
-      double v = double.tryParse(voriControllers[i].text) ?? 0;
-      double a = double.tryParse(anaControllers[i].text) ?? 0;
-      double r = double.tryParse(rotiControllers[i].text) ?? 0;
-      double p = double.tryParse(pointControllers[i].text) ?? 0;
-      totalJewelryPoints += _convertToTotalPoints(v, a, r, p);
-    }
-
-    // ২. অগ্রিম সোনার ওজন
-    double advV = double.tryParse(_advVoriController.text) ?? 0;
-    double advA = double.tryParse(_advAnaController.text) ?? 0;
-    double advR = double.tryParse(_advRotiController.text) ?? 0;
-    double advP = double.tryParse(_advPointController.text) ?? 0;
-    double totalAdvGoldPoints = _convertToTotalPoints(advV, advA, advR, advP);
-
-    // ৩. নিট গহনার ওজন
-    double netJewelryPoints = totalJewelryPoints - totalAdvGoldPoints;
-    if (netJewelryPoints < 0) netJewelryPoints = 0;
-
-    // ৪. মূল্যের হিসাব
-    double netVoriEquivalent = netJewelryPoints / 960.0;
-    double netJewelryPrice = netVoriEquivalent * marketPricePerVori;
-
-    // অগ্রিম টাকা বাদ
-    String cleanAdvCash = _advanceCashController.text.replaceAll(',', '').replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2').replaceAll('৩', '3').replaceAll('৪', '4').replaceAll('৫', '5').replaceAll('৬', '6').replaceAll('৭', '7').replaceAll('৮', '8').replaceAll('৯', '9');
-    double advCash = double.tryParse(cleanAdvCash) ?? 0;
-
-    double priceAfterAdvCash = netJewelryPrice - advCash;
-    if (priceAfterAdvCash < 0) priceAfterAdvCash = 0;
-
-    // মেকিং চার্জ
-    String cleanMaking = _makingChargeController.text.replaceAll(',', '').replaceAll('০', '0').replaceAll('১', '1').replaceAll('২', '2').replaceAll('৩', '3').replaceAll('৪', '4').replaceAll('৫', '5').replaceAll('৬', '6').replaceAll('৭', '7').replaceAll('৮', '8').replaceAll('৯', '9');
-    double makingCharge = double.tryParse(cleanMaking) ?? 0;
-
-    double grandTotal = priceAfterAdvCash + makingCharge;
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFFFF8E1),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF8D6E63),
+        title: const Text('পরমা জুয়েলার্স - পাকা বিল', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(12.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ================= ১. হেডার সেকশন =================
+            // দোকানের হেডার (সঠিক বানান সহ)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: cardBackground,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: headerBorderColor, width: 1),
+                color: const Color(0xFF5D4037),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Column(
+              child: const Column(
                 children: [
-                  Text(
-                    'পরমা জুয়েলার্স',
-                    style: TextStyle(
-                      color: primaryBrown,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Serif',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'কাপুরিয়া পট্টি, চৌরাস্তা, যশোর।',
-                    style: TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
+                  Text('পরমা জুয়েলার্স', style: TextStyle(color: Color(0xFFFFD700), fontSize: 22, fontWeight: FontWeight.bold)),
+                  SizedBox(height: 4),
+                  Text('কাপুড়িয়া পট্টি, চৌরাস্তা, যশোর', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                  SizedBox(height: 2),
+                  Text('পাকা ক্যাশ মেমো / বিল', style: TextStyle(color: Colors.amberAccent, fontSize: 15, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // ================= ২. কাস্টমার তথ্য =================
-            _buildSectionCard(
-              title: 'কাস্টমার',
-              icon: Icons.person,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildInlineLabelField('অর্ডার নং:', _orderNoController, hint: 'ম্যানুয়াল ইনপুট'),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildInlineLabelField('তাং:', _dateController, hint: 'দিন/মাস/বছর'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text('ক্যারেট: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selectedKarat,
-                            isDense: true,
-                            items: ['22k', '21k', '18k'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                            onChanged: _onKaratChanged,
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text('বাজার মূল্য:  ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Text(
-                          formatNumberWithCommas(marketPricePerVori),
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
-                      const Text(' (প্রতি ভরি)', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _buildInlineLabelField('কাস্টমারের নাম:', _customerNameController, hint: 'ম্যানুয়াল ইনপুট'),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text('ফোন নাম্বার:  ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: const Text('+৮৮০', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: SizedBox(
-                          height: 36,
-                          child: TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            decoration: _inputDeco('ম্যানুয়াল ইনপুট'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _buildInlineLabelField('ঠিকানা:', _addressController, hint: 'ম্যানুয়াল ইনপুট'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ================= ৩. কাস্টমারের অগ্রিম জমা =================
-            _buildSectionCard(
-              title: 'কাস্টমারের অগ্রিম জমা',
-              icon: Icons.monetization_on,
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Text('টাকা:  ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Expanded(
-                        child: SizedBox(
-                          height: 36,
-                          child: TextField(
-                            controller: _advanceCashController,
-                            keyboardType: TextInputType.number,
-                            onChanged: (_) => setState(() {}),
-                            decoration: _inputDeco('১,০০০ / ১০,০০০ / ১,০০,০০০'),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      const Text('সোনা:  ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.grey.shade400),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: advanceGoldKarat,
-                            isDense: true,
-                            items: ['22k', '21k', '18k'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                            onChanged: (val) {
-                              if (val != null) setState(() => advanceGoldKarat = val);
-                            },
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(child: _buildMiniWeightInput('ভরি', _advVoriController)),
-                      const SizedBox(width: 4),
-                      Expanded(child: _buildMiniWeightInput('আনা', _advAnaController)),
-                      const SizedBox(width: 4),
-                      Expanded(child: _buildMiniWeightInput('রতি', _advRotiController)),
-                      const SizedBox(width: 4),
-                      Expanded(child: _buildMiniWeightInput('পয়েন্ট', _advPointController)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ================= ৪. গহনার বিস্তারিত =================
-            _buildSectionCard(
-              title: 'গহনার বিস্তারিত',
-              icon: Icons.diamond,
-              child: Column(
-                children: [
-                  // টেবিল হেডার
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                    color: Colors.grey.shade300,
-                    child: Row(
-                      children: const [
-                        SizedBox(width: 20, child: Text('#', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                        Expanded(flex: 3, child: Text('গহনার বিবরণ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
-                        SizedBox(width: 45, child: Text('ক্যারেট', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
-                        SizedBox(width: 4),
-                        Expanded(child: Center(child: Text('ভরি', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
-                        Expanded(child: Center(child: Text('আনা', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
-                        Expanded(child: Center(child: Text('রতি', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
-                        Expanded(child: Center(child: Text('পয়েন্ট', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)))),
+            // কাস্টমার তথ্য কার্ড
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('গ্রাহকের বিবরণ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 14)),
+                    const Divider(height: 10),
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: _buildTextField('গ্রাহকের নাম', _customerNameController)),
+                        const SizedBox(width: 8),
+                        Expanded(flex: 2, child: _buildTextField('মোবাইল নং', _customerPhoneController, isNumber: true)),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  // ৪টি লাইন
-                  for (int i = 0; i < 4; i++) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        children: [
-                          SizedBox(width: 20, child: Text('${i + 1}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                          Expanded(
-                            flex: 3,
-                            child: SizedBox(
-                              height: 34,
-                              child: TextField(
-                                controller: descControllers[i],
-                                decoration: _inputDeco('১ টা চেন / আংটি ইত্যাদি'),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.grey.shade400),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: rowKarats[i],
-                                isDense: true,
-                                style: const TextStyle(fontSize: 12, color: Colors.black),
-                                items: ['22k', '21k', '18k'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                                onChanged: (val) {
-                                  if (val != null) setState(() => rowKarats[i] = val);
-                                },
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(child: _buildMiniWeightInput('ভরি', voriControllers[i])),
-                          const SizedBox(width: 2),
-                          Expanded(child: _buildMiniWeightInput('আনা', anaControllers[i])),
-                          const SizedBox(width: 2),
-                          Expanded(child: _buildMiniWeightInput('রতি', rotiControllers[i])),
-                          const SizedBox(width: 2),
-                          Expanded(child: _buildMiniWeightInput('পয়েন্ট', pointControllers[i])),
-                        ],
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(flex: 3, child: _buildTextField('ঠিকানা', _customerAddressController)),
+                        const SizedBox(width: 8),
+                        Expanded(flex: 1.5, child: _buildTextField('তাং', _dateController)),
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // ================= ৫ & ৬. ওজনের ও মূল্যের হিসাব (পাশাপাশি/নিচে) =================
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // গহনার ওজনের হিসাব
-                Expanded(
-                  child: _buildSectionCard(
-                    title: 'গহনার ওজনের হিসাব',
-                    icon: Icons.scale,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildCalculationRow('মোট ওজন:', _formatPointsToWeightString(totalJewelryPoints)),
-                        const Divider(),
-                        _buildCalculationRow('অগ্রিম জমা (সোনার):', _formatPointsToWeightString(totalAdvGoldPoints)),
-                        const Divider(),
-                        _buildCalculationRow('নিট গহনার ওজন:', _formatPointsToWeightString(netJewelryPoints), isHighlight: true),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // গহনার মূল্যের হিসাব
-                Expanded(
-                  child: _buildSectionCard(
-                    title: 'গহনার মূল্যের হিসাব',
-                    icon: Icons.calculate,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildCalculationRow('নিট গহনার মূল্য:', formatNumberWithCommas(netJewelryPrice)),
-                        const Divider(),
-                        _buildCalculationRow('(-) অগ্রিম টাকা জমা:', formatNumberWithCommas(advCash)),
-                        const Divider(),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // গহনার বিবরণ
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('গহনার বিবরণ ও ওজন (সর্বোচ্চ ৪টি)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 14)),
+                    const Divider(height: 10),
+                    ..._itemRows.asMap().entries.map((entry) {
+                      int index = entry.key;
+                      var row = entry.value;
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.brown.shade200),
+                        ),
+                        child: Column(
                           children: [
-                            const Text('মেকিং চার্জ:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            SizedBox(
-                              width: 70,
-                              height: 30,
-                              child: TextField(
-                                controller: _makingChargeController,
-                                keyboardType: TextInputType.number,
-                                onChanged: (_) => setState(() {}),
-                                textAlign: TextAlign.right,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                decoration: _inputDeco('০.০০'),
-                              ),
+                            Row(
+                              children: [
+                                Expanded(flex: 2, child: _buildTextField('পণ্যের বিবরণ #${index + 1}', row['desc']!)),
+                                const SizedBox(width: 6),
+                                Expanded(flex: 1, child: _buildTextField('মূল্য/ভরি', row['pricePerVori']!, isNumber: true, fontSize: 16)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(child: _buildTextField('ভরি', row['vori']!, isNumber: true)),
+                                const SizedBox(width: 4),
+                                Expanded(child: _buildTextField('আনা', row['ana']!, isNumber: true)),
+                                const SizedBox(width: 4),
+                                Expanded(child: _buildTextField('রতি', row['roti']!, isNumber: true)),
+                                const SizedBox(width: 4),
+                                Expanded(child: _buildTextField('পয়েন্ট', row['point']!, isNumber: true)),
+                                const SizedBox(width: 4),
+                                Expanded(child: _buildTextField('মুজরি', row['makingCharge']!, isNumber: true)),
+                              ],
                             ),
                           ],
                         ),
-                        const Divider(thickness: 1.5, color: Colors.brown),
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: _buildCalculationRow('সর্বমোট মূল্য:', formatNumberWithCommas(grandTotal), isBold: true),
-                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // অগ্রিম জমা কার্ড
+            Card(
+              elevation: 3,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              child: Padding(
+                padding: const EdgeInsets.all(10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('অগ্রিম জমা (সোনা ও নগদ)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 14)),
+                    const Divider(height: 10),
+                    const Text('অগ্রিম সোনার ওজন:', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Expanded(child: _buildTextField('ভরি', _advGoldVori, isNumber: true)),
+                        const SizedBox(width: 4),
+                        Expanded(child: _buildTextField('আনা', _advGoldAna, isNumber: true)),
+                        const SizedBox(width: 4),
+                        Expanded(child: _buildTextField('রতি', _advGoldRoti, isNumber: true)),
+                        const SizedBox(width: 4),
+                        Expanded(child: _buildTextField('পয়েন্ট', _advGoldPoint, isNumber: true)),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    _buildTextField('অগ্রিম নগদ টাকা', _advCashController, isNumber: true),
+                  ],
                 ),
-              ],
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // হিসাব ফলাফল সেকশন
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.amber.shade700, width: 2),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('মোট ওজন:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('${toBanglaDigit(totalWeightVori.toStringAsFixed(3))} ভরি', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    ],
+                  ),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('নিট ওজন (বাদ অগ্রিম):', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 18)),
+                      Text('${toBanglaDigit(totalNetWeightVori.toStringAsFixed(3))} ভরি', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.brown, fontSize: 18)),
+                    ],
+                  ),
+                  const Divider(thickness: 1.5),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('সর্বমোট মূল্য:', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
+                      Text('৳ ${toBanglaDigit(grandTotal.toStringAsFixed(2))}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // হিসাব আপডেট করুন বাটন
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF8D6E63),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: _calculateBill,
+                child: const Text('হিসাব আপডেট করুন', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  // ================= উইজেট বিল্ডার ফাংশনসমূহ =================
-  Widget _buildSectionCard({required String title, required IconData icon, required Widget child}) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: cardBackground,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: headerBorderColor.withOpacity(0.5)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // কার্ড হেডার ব্যাজ
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: primaryBrown,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(7), bottomRight: Radius.circular(12)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: Colors.amber, size: 16),
-                const SizedBox(width: 6),
-                Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: child,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInlineLabelField(String label, TextEditingController controller, {required String hint}) {
-    return Row(
-      children: [
-        Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: SizedBox(
-            height: 36,
-            child: TextField(
-              controller: controller,
-              decoration: _inputDeco(hint),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiniWeightInput(String hint, TextEditingController controller) {
-    return SizedBox(
-      height: 34,
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        onChanged: (_) => setState(() {}),
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 12),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: const TextStyle(fontSize: 10, color: Colors.black38),
-          contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: Colors.grey.shade400)),
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDeco(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(fontSize: 11, color: Colors.black38),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: Colors.grey.shade400)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide(color: primaryBrown)),
-    );
-  }
-
-  Widget _buildCalculationRow(String label, String value, {bool isHighlight = false, bool isBold = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: (isHighlight || isBold) ? FontWeight.bold : FontWeight.w600,
-            color: isHighlight ? primaryBrown : Colors.black87,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: isHighlight ? primaryBrown : (isBold ? Colors.red.shade900 : Colors.black87),
-          ),
-        ),
-      ],
     );
   }
 }
