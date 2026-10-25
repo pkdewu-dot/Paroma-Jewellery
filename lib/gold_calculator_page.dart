@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'paka_bill_view.dart'; // পাকা বিল ফাইলটি এখানে যুক্ত করা হলো
+import 'paka_bill_view.dart';
 
 // ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
 String toBanglaDigit(String input) {
@@ -76,7 +76,7 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
         controller: _tabController,
         children: const [
           CalculatorView(),
-          PakaBillView(), // পাকা বিল সফলভাবে এখানে যুক্ত করা হলো
+          PakaBillView(),
         ],
       ),
     );
@@ -95,17 +95,17 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // সঠিক বাজার দর (প্রতি ভরি)
+  // সঠিক লাইভ বাজার দর (প্রতি ভরি) - 'আজকের বাজার' পেজের সাথে হুবহু মিল রেখে আপডেট করা
   final Map<String, Map<String, double>> marketPrices = {
     'Gold': {
       '22K': 228030.0,
-      '21K': 217777.0,
-      '18K': 187032.0,
+      '21K': 210943.0,
+      '18K': 181200.0,
     },
     'Silver': {
-      '22K': 4199.0,
-      '21K': 3966.0,
-      '18K': 3441.0,
+      '22K': 3849.0,
+      '21K': 3674.0,
+      '18K': 3139.0,
     }
   };
 
