@@ -225,7 +225,7 @@ class _PakaBillViewState extends State<PakaBillView> {
                               children: [
                                 Expanded(flex: 2, child: _buildTextField('পণ্যের বিবরণ #${index + 1}', row['desc'])),
                                 const SizedBox(width: 6),
-                                // ক্যারেট ড্রপডাউন
+                                // ক্যারেট ড্রপডাউন (সঠিক কালার কোড ব্যবহার করা হয়েছে)
                                 Expanded(
                                   flex: 1,
                                   child: Container(
@@ -239,7 +239,7 @@ class _PakaBillViewState extends State<PakaBillView> {
                                       child: DropdownButton<String>(
                                         value: row['karat'],
                                         isExpanded: true,
-                                        style: const TextStyle(fontSize: 11, color: Colors.black8T, fontWeight: FontWeight.bold),
+                                        style: const TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.bold),
                                         items: ['২২ ক্যারেট', '২১ ক্যারেট', '১৮ ক্যারেট'].map((String value) {
                                           return DropdownMenuItem<String>(
                                             value: value,
@@ -317,7 +317,7 @@ class _PakaBillViewState extends State<PakaBillView> {
             ),
             const SizedBox(height: 15),
 
-            // হিসাব ফলাফল সেকশন (বড় ফন্টে স্পষ্ট প্রদর্শন)
+            // হিসাব ফলাফল সেকশন
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
