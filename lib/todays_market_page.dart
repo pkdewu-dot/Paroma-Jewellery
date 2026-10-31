@@ -521,7 +521,7 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
                     Text('সর্বশেষ আপডেট: $_lastUpdate', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
                   ],
                   const SizedBox(height: 8),
-                  const Text('Prices provided by Gold Price Bangladesh (BAJUS-based saved records)', textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  const Text('Prices provided by Gold Price Bangladesh (BAJUS-based saved records)', textAlign: TextAlign.center, style: TextStyle(fontSize: 10, color: Colors.grey)),
                   const SizedBox(height: 30),
                 ],
               ),
