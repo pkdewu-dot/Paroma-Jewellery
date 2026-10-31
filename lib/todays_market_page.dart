@@ -176,7 +176,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
         throw Exception('Incomplete gold or silver data');
       }
 
-      // এখানে লাইভ ডেটা গ্লোবাল মার্কেটে আপডেট করে দেওয়া হচ্ছে
       GlobalMarketData.updatePrices(
         g22: _bhori(g22), g21: _bhori(g21), g18: _bhori(g18),
         s22: _bhori(s22), s21: _bhori(s21), s18: _bhori(s18),
