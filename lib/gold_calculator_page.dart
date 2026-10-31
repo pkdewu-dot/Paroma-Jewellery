@@ -1,7 +1,31 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'paka_bill_view.dart';
+
+// ============================================================
+// গ্লোবাল মার্কেট রেট হোল্ডার (আজকের বাজারের লাইভ রেট ক্যালকুলেটরে পাঠানোর জন্য)
+// ============================================================
+class GlobalMarketData {
+  static Map<String, Map<String, double>> liveMarketPrices = {
+    'Gold': {
+      '22K': 228030.0,
+      '21K': 210943.0,
+      '18K': 181200.0,
+    },
+    'Silver': {
+      '22K': 3849.0,
+      '21K': 3674.0,
+      '18K': 3139.0,
+    }
+  };
+
+  static void updatePrices({
+    required double g22, required double g21, required double g18,
+    required double s22, required double s21, required double s18,
+  }) {
+    liveMarketPrices['Gold'] = {'22K': g22, '21K': g21, '18K': g18};
+    liveMarketPrices['Silver'] = {'22K': s22, '21K': s21, '18K': s18};
+  }
+}
 
 // ================= হেল্পার ফাংশন: বাংলা ডিজিট ও কমা ফরম্যাটিং =================
 String toBanglaDigit(String input) {
@@ -37,6 +61,9 @@ String formatNumberWithCommas(double number, {bool isCurrency = false}) {
   }
 }
 
+// ============================================================
+// মেইন ড্যাশবোর্ড (ট্যাব কন্ট্রোলার: ক্যালকুলেটর ও পাকা বিল)
+// ============================================================
 class GoldMarketDashboard extends StatefulWidget {
   const GoldMarketDashboard({Key? key}) : super(key: key);
 
@@ -60,7 +87,7 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF3B30),
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text('স্বর্ণের মূল্য ক্যালকুলেটর', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('পরমা জুয়েলার্স ক্যালকুলেটর', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.amber,
@@ -83,6 +110,9 @@ class _GoldMarketDashboardState extends State<GoldMarketDashboard> with SingleTi
   }
 }
 
+// ============================================================
+// স্বর্ণের মূল্য ক্যালকুলেটর ভিউ (যা লাইভ রেট ব্যবহার করবে)
+// ============================================================
 class CalculatorView extends StatefulWidget {
   const CalculatorView({Key? key}) : super(key: key);
 
@@ -95,20 +125,6 @@ class _CalculatorViewState extends State<CalculatorView> {
   String selectedKarat = '22K';   
   String selectedMuzoriType = 'Percent'; 
   
-  // সঠিক লাইভ বাজার দর (প্রতি ভরি) - 'আজকের বাজার' পেজের সাথে হুবহু মিল রেখে আপডেট করা
-  final Map<String, Map<String, double>> marketPrices = {
-    'Gold': {
-      '22K': 228030.0,
-      '21K': 210943.0,
-      '18K': 181200.0,
-    },
-    'Silver': {
-      '22K': 3849.0,
-      '21K': 3674.0,
-      '18K': 3139.0,
-    }
-  };
-
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _muzoriValueController = TextEditingController(text: "6");
   
@@ -129,7 +145,7 @@ class _CalculatorViewState extends State<CalculatorView> {
   }
 
   void updatePriceBox() {
-    double price = marketPrices[selectedMetal]?[selectedKarat] ?? 0.0;
+    double price = GlobalMarketData.liveMarketPrices[selectedMetal]?[selectedKarat] ?? 0.0;
     setState(() {
       _priceController.text = formatNumberWithCommas(price);
     });
@@ -222,22 +238,8 @@ class _CalculatorViewState extends State<CalculatorView> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label, 
-          style: TextStyle(
-            color: isBold ? (textColor ?? Colors.black87) : Colors.black87, 
-            fontSize: fontSize, 
-            fontWeight: FontWeight.bold 
-          )
-        ),
-        Text(
-          value, 
-          style: TextStyle(
-            color: isBold ? (textColor ?? Colors.green.shade800) : Colors.black87, 
-            fontSize: fontSize, 
-            fontWeight: FontWeight.bold 
-          )
-        ),
+        Text(label, style: TextStyle(color: isBold ? (textColor ?? Colors.black87) : Colors.black87, fontSize: fontSize, fontWeight: FontWeight.bold)),
+        Text(value, style: TextStyle(color: isBold ? (textColor ?? Colors.green.shade800) : Colors.black87, fontSize: fontSize, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -257,26 +259,20 @@ class _CalculatorViewState extends State<CalculatorView> {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
-              'নিচের অপশন থেকে সিলেক্ট করুন',
+              'নিচের অপশন থেকে সিলেক্ট করুন (লাইভ বাজার দর যুক্ত)',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _buildCheckboxTile('Gold', selectedMetal == 'Gold', (val) {
-                setState(() { 
-                  selectedMetal = 'Gold'; 
-                  updatePriceBox(); 
-                });
+                setState(() { selectedMetal = 'Gold'; updatePriceBox(); });
               }),
               const SizedBox(width: 30),
               _buildCheckboxTile('Silver', selectedMetal == 'Silver', (val) {
-                setState(() { 
-                  selectedMetal = 'Silver'; 
-                  updatePriceBox(); 
-                });
+                setState(() { selectedMetal = 'Silver'; updatePriceBox(); });
               }),
             ],
           ),
@@ -285,22 +281,13 @@ class _CalculatorViewState extends State<CalculatorView> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildCheckboxTile('২২ ক্যারেট', selectedKarat == '22K', (val) {
-                setState(() { 
-                  selectedKarat = '22K'; 
-                  updatePriceBox(); 
-                });
+                setState(() { selectedKarat = '22K'; updatePriceBox(); });
               }),
               _buildCheckboxTile('২১ ক্যারেট', selectedKarat == '21K', (val) {
-                setState(() { 
-                  selectedKarat = '21K'; 
-                  updatePriceBox(); 
-                });
+                setState(() { selectedKarat = '21K'; updatePriceBox(); });
               }),
               _buildCheckboxTile('১৮ ক্যারেট', selectedKarat == '18K', (val) {
-                setState(() { 
-                  selectedKarat = '18K'; 
-                  updatePriceBox(); 
-                });
+                setState(() { selectedKarat = '18K'; updatePriceBox(); });
               }),
             ],
           ),
@@ -355,11 +342,7 @@ class _CalculatorViewState extends State<CalculatorView> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.purple.shade200),
               ),
-              child: const Text(
-                'গহনার ওজন',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.purple, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('গহনার ওজন', textAlign: TextAlign.center, style: TextStyle(color: Colors.purple, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 12),
@@ -389,10 +372,7 @@ class _CalculatorViewState extends State<CalculatorView> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: calculateBill,
-              child: const Text(
-                'হিসাব করুন',
-                style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: const Text('হিসাব করুন', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
           if (showResult) ...[
@@ -408,17 +388,14 @@ class _CalculatorViewState extends State<CalculatorView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _resultRow('মোট সোনার মূল্য:', formatNumberWithCommas(totalMetalPrice, isCurrency: true), fontSize: 15),
+                  _resultRow('মোট সোনার/রুপার মূল্য:', formatNumberWithCommas(totalMetalPrice, isCurrency: true), fontSize: 15),
                   const Divider(color: Colors.black12, height: 16),
                   _resultRow('মোট মুজরি:', formatNumberWithCommas(totalMuzori, isCurrency: true), fontSize: 15),
                   const Divider(color: Colors.amber, height: 16, thickness: 1.5),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: _resultRow('মোট মূল্য:', formatNumberWithCommas(grandTotal, isCurrency: true), isBold: true, fontSize: 18, textColor: Colors.green.shade900),
+                    decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
+                    child: _resultRow('সর্বমোট মূল্য:', formatNumberWithCommas(grandTotal, isCurrency: true), isBold: true, fontSize: 18, textColor: Colors.green.shade900),
                   ),
                 ],
               ),
