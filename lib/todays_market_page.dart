@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'gold_calculator_page.dart';
 
 class TodaysMarketPage extends StatefulWidget {
   const TodaysMarketPage({super.key});
@@ -175,11 +174,6 @@ class _TodaysMarketPageState extends State<TodaysMarketPage> {
           s22 == null || s21 == null || s18 == null) {
         throw Exception('Incomplete gold or silver data');
       }
-
-      GlobalMarketData.updatePrices(
-        g22: _bhori(g22), g21: _bhori(g21), g18: _bhori(g18),
-        s22: _bhori(s22), s21: _bhori(s21), s18: _bhori(s18),
-      );
 
       final normalizedData = <String, dynamic>{
         'gold': {'k22': g22, 'k21': g21, 'k18': g18},
